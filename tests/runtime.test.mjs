@@ -26,7 +26,7 @@ test('explorer serves generated data and blocks traversal',async()=>{
  const server=createExplorer(root);await listen(server,0);const url=`http://127.0.0.1:${server.address().port}`;
  try{
   const response=await fetch(url+'/');assert.match(await response.text(),/Architecture workspace/);
-  const graph=await(await fetch(url+'/data.json')).json();assert.ok(graph.instances.length>=24);
+  const graph=await(await fetch(url+'/data.json')).json();assert.equal(graph.instances.length,JSON.parse(await readFile(new URL('../config/system.json',import.meta.url),'utf8')).deployments.length);
   assert.equal((await fetch(url+'/%2e%2e%2fpackage.json')).status,404);
   assert.equal((await fetch(url+'/data.json',{method:'POST'})).status,405);
  }finally{await close(server);}
@@ -40,6 +40,6 @@ test('entire demo starts, visits dependencies and shuts down',async()=>{
  try{
   assert.equal((await fetch(runtime.url)).status,200);
   const response=await(await fetch(`http://127.0.0.1:${config.services[0].port}/simulate`)).json();
-  const visited=new Set();function visit(node){visited.add(node.service);assert.equal(node.ok,true);node.calls.forEach(visit);}visit(response);assert.equal(visited.size,config.services.length);
+  const visited=new Set();function visit(node){visited.add(node.service);assert.equal(node.ok,true);node.calls.forEach(visit);}visit(response);const reachable=new Set();function walk(id){if(reachable.has(id))return;reachable.add(id);config.dependencies.filter(e=>e.source===id).forEach(e=>walk(e.target));}walk(config.services[0].id);assert.deepEqual([...visited].sort(),[...reachable].sort());
  }finally{await runtime.close();}
 });

@@ -5,8 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {validate,projectGraph,ContractError} from '../src/core/model.mjs';
 import {generate,writeGenerated,yaml} from '../src/core/generate.mjs';
-const source=JSON.parse(await readFile(new URL('../config/system.json',import.meta.url),'utf8'));
-const observations=JSON.parse(await readFile(new URL('../config/observations.json',import.meta.url),'utf8'));
+const source=JSON.parse(await readFile(new URL('./fixtures/system.json',import.meta.url),'utf8'));
+const observations=JSON.parse(await readFile(new URL('./fixtures/observations.json',import.meta.url),'utf8'));
 const fresh=()=>[structuredClone(source),structuredClone(observations)];
 test('fixture covers three projects, eight services and three contexts',()=>{
  const groups=validate(source,observations);assert.ok(groups.projects.size>=3);assert.ok(groups.services.size>=8);assert.ok(groups.contexts.size>=3);assert.equal(groups.deployments.size,source.deployments.length);
@@ -41,7 +41,7 @@ test('generation is deterministic and maps cross-project DNS',()=>{
  assert.equal(Object.keys(files).filter(p=>p.startsWith('generated/helm/')).length,source.projects.length*source.contexts.length);
  assert.match(files['generated/helm/prod-east/commerce.yaml'],/inventory.archi-prod.svc.cluster.local:8080/);
  assert.match(files['compose.yaml'],/http:\/\/inventory:8080/);
- const descriptor=JSON.parse(files['examples/projects/commerce/services/orders/service.json']);assert.equal(descriptor.dependencies.length,4);
+ const descriptor=JSON.parse(files['examples/projects/commerce/services/orders/service.json']);assert.deepEqual(descriptor.dependencies.map(e=>e.target).sort(),source.dependencies.filter(e=>e.source==='orders').map(e=>e.target).sort());
 });
 test('generation check catches edits and removes only previously owned stale output',async()=>{
  const root=await mkdtemp(path.join(os.tmpdir(),'archi-test-'));try{

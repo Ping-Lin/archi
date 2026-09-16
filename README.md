@@ -113,7 +113,8 @@ for the migration path to Vite as the UI grows.
 ## Verification
 
 `npm run verify` checks generated drift and runs contract, generation, Vue template
-compilation, HTTP runtime and static server tests. `npm run check:helm` lints and
+compilation, HTTP runtime and static server tests. It also runs an isolated ninth-service
+extension through the setup skill. `npm run check:helm` lints and
 renders every context/project. GitHub Actions also runs browser interactions and
 uploads desktop/mobile screenshots as `architecture-previews`.
 

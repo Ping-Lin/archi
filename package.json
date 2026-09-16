@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "node scripts/archi.mjs serve",
     "demo": "node scripts/archi.mjs demo",
@@ -12,6 +14,7 @@
     "check": "node scripts/archi.mjs check",
     "check:helm": "node scripts/archi.mjs helm",
     "test": "node --test tests/*.test.mjs",
-    "verify": "npm run check && npm test"
+    "verify": "npm run check && npm test && npm run test:skill",
+    "test:skill": "node tests/skill-scenario.mjs"
   }
 }

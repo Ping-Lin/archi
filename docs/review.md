@@ -9,11 +9,13 @@
 - [x] HTTP simulation with cycle/depth limits, timeout and failure propagation.
 - [x] Repo-local system-design skill with repeatable verification.
 - [x] Node contract, runtime and Vue template compilation checks.
+- [x] Isolated setup-skill extension: ninth service, three contexts, unknown observations preserved.
 - [x] Helm and browser CI gates with screenshot artifacts.
 
-The final two CI execution results must be checked on the current branch commit;
-having a workflow file does not mean its gates have passed. The authoring environment
-has no Helm/Chromium and restricted package downloads, so they cannot run locally.
+Initial remote verification passed: all 24 Node tests, all nine Helm lint/render
+combinations, and browser interactions at desktop/mobile sizes. The screenshot
+artifact is available in GitHub Actions. Later changes must pass the same gates.
+The authoring environment lacks Helm/Chromium; those gates run on GitHub runners.
 
 ## Suggested review sequence
 

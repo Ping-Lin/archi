@@ -5,11 +5,17 @@ export default {
     const zoom=ref(1);
     const positions={gateway:[35,224],catalog:[330,35],orders:[330,224],identity:[330,413],inventory:[635,35],shipping:[635,190],payments:[635,345],notifications:[635,500]};
     const nodes=computed(()=>{
-      if(props.level==='L1')return props.data.projects.map((p,i)=>({...p,kind:'project',x:70+i*285,y:215,count:props.data.services.filter(s=>s.project===p.id).length}));
-      const counters={edge:0,domain:0,integration:0};
+      if(props.level==='L1')return props.data.projects.map((p,i)=>({...p,kind:'project',x:70+(i%3)*285,y:215+Math.floor(i/3)*180,count:props.data.services.filter(s=>s.project===p.id).length}));
+      const occupied=props.data.services.filter(s=>positions[s.id]).map(s=>positions[s.id]);
       return props.data.services.map(s=>{
-        const fallback=[{edge:35,domain:330,integration:635}[s.layer],35+(counters[s.layer]++)*155];
-        const [x,y]=positions[s.id]??fallback;
+        let point=positions[s.id];
+        if(!point){
+          const x={edge:35,domain:330,integration:635}[s.layer];
+          let y=35;
+          while(occupied.some(([px,py])=>px===x&&Math.abs(py-y)<135))y+=155;
+          point=[x,y];occupied.push(point);
+        }
+        const [x,y]=point;
         return {...s,kind:'service',x,y,instance:props.data.instances.find(i=>i.service===s.id&&i.context===props.context)};
       });
     });
@@ -60,6 +66,6 @@ export default {
       </g>
       <text v-if="level==='L1'" x="460" y="410" text-anchor="middle" class="overview-hint">Select a project to inspect it. Double-click to explore its services.</text>
     </svg></div>
-    <div class="canvas-footer"><div class="legend"><span><i class="dot commerce-dot"></i>Commerce</span><span><i class="dot fulfillment-dot"></i>Fulfillment</span><span><i class="dot platform-dot"></i>Platform</span></div><div class="zoom"><button aria-label="Zoom out" @click="zoom=Math.max(.7,zoom-.15)">−</button><button aria-label="Reset zoom" @click="zoom=1">{{Math.round(zoom*100)}}%</button><button aria-label="Zoom in" @click="zoom=Math.min(2,zoom+.15)">+</button></div></div>
+    <div class="canvas-footer"><div class="legend"><span v-for="p in data.projects" :key="p.id"><i class="dot" :class="p.id+'-dot'"></i>{{p.name}}</span></div><div class="zoom"><button aria-label="Zoom out" @click="zoom=Math.max(.7,zoom-.15)">−</button><button aria-label="Reset zoom" @click="zoom=1">{{Math.round(zoom*100)}}%</button><button aria-label="Zoom in" @click="zoom=Math.min(2,zoom+.15)">+</button></div></div>
   </div>`
 };

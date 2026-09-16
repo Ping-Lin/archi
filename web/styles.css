@@ -1300,3 +1300,9 @@ td strong {
     transition:none!important;
   }
 }
+
+/* New project identities retain a visible neutral marker. */
+.dot { background: #aaa4bd; }
+.commerce-dot { background: #b09bce; }
+.fulfillment-dot { background: #82adba; }
+.platform-dot { background: #95a4d5; }
