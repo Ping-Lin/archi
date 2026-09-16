@@ -1,0 +1,12 @@
+{
+  "id": "fulfillment",
+  "name": "Fulfillment",
+  "owner": "Operations team",
+  "repo": "https://example.com/repos/fulfillment",
+  "description": "Inventory allocation and shipment",
+  "simulation": true,
+  "services": [
+    "inventory",
+    "shipping"
+  ]
+}

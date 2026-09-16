@@ -1,0 +1,11 @@
+{
+  "id": "inventory",
+  "name": "Inventory Service",
+  "project": "fulfillment",
+  "layer": "domain",
+  "description": "Reserves available stock",
+  "port": 8103,
+  "repoPath": "services/inventory",
+  "dependencies": [],
+  "simulation": true
+}

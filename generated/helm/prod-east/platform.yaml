@@ -1,0 +1,27 @@
+"project": "platform"
+"context": "prod-east"
+"services":
+  -
+    "id": "identity"
+    "replicas": 3
+    "image":
+      "repository": "example.invalid/archi/identity"
+      "tag": "1.4.0"
+    "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    "dependencies": {}
+  -
+    "id": "payments"
+    "replicas": 3
+    "image":
+      "repository": "example.invalid/archi/payments"
+      "tag": "1.4.0"
+    "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    "dependencies": {}
+  -
+    "id": "notifications"
+    "replicas": 3
+    "image":
+      "repository": "example.invalid/archi/notifications"
+      "tag": "1.4.0"
+    "sourceCommit": ""
+    "dependencies": {}

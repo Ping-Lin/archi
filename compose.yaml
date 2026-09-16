@@ -1,0 +1,137 @@
+"services":
+  "gateway":
+    "build":
+      "context": "."
+      "dockerfile": "src/mock/Dockerfile"
+    "environment":
+      "SERVICE_ID": "gateway"
+      "PORT": "8080"
+      "DEPENDENCIES": "{\"identity\":\"http://identity:8080\",\"orders\":\"http://orders:8080\",\"catalog\":\"http://catalog:8080\"}"
+    "ports":
+      - "127.0.0.1:8100:8080"
+    "read_only": true
+    "tmpfs":
+      - "/tmp"
+    "cap_drop":
+      - "ALL"
+    "security_opt":
+      - "no-new-privileges:true"
+  "orders":
+    "build":
+      "context": "."
+      "dockerfile": "src/mock/Dockerfile"
+    "environment":
+      "SERVICE_ID": "orders"
+      "PORT": "8080"
+      "DEPENDENCIES": "{\"inventory\":\"http://inventory:8080\",\"payments\":\"http://payments:8080\",\"shipping\":\"http://shipping:8080\",\"notifications\":\"http://notifications:8080\"}"
+    "ports":
+      - "127.0.0.1:8101:8080"
+    "read_only": true
+    "tmpfs":
+      - "/tmp"
+    "cap_drop":
+      - "ALL"
+    "security_opt":
+      - "no-new-privileges:true"
+  "catalog":
+    "build":
+      "context": "."
+      "dockerfile": "src/mock/Dockerfile"
+    "environment":
+      "SERVICE_ID": "catalog"
+      "PORT": "8080"
+      "DEPENDENCIES": "{}"
+    "ports":
+      - "127.0.0.1:8102:8080"
+    "read_only": true
+    "tmpfs":
+      - "/tmp"
+    "cap_drop":
+      - "ALL"
+    "security_opt":
+      - "no-new-privileges:true"
+  "inventory":
+    "build":
+      "context": "."
+      "dockerfile": "src/mock/Dockerfile"
+    "environment":
+      "SERVICE_ID": "inventory"
+      "PORT": "8080"
+      "DEPENDENCIES": "{}"
+    "ports":
+      - "127.0.0.1:8103:8080"
+    "read_only": true
+    "tmpfs":
+      - "/tmp"
+    "cap_drop":
+      - "ALL"
+    "security_opt":
+      - "no-new-privileges:true"
+  "shipping":
+    "build":
+      "context": "."
+      "dockerfile": "src/mock/Dockerfile"
+    "environment":
+      "SERVICE_ID": "shipping"
+      "PORT": "8080"
+      "DEPENDENCIES": "{\"inventory\":\"http://inventory:8080\"}"
+    "ports":
+      - "127.0.0.1:8104:8080"
+    "read_only": true
+    "tmpfs":
+      - "/tmp"
+    "cap_drop":
+      - "ALL"
+    "security_opt":
+      - "no-new-privileges:true"
+  "identity":
+    "build":
+      "context": "."
+      "dockerfile": "src/mock/Dockerfile"
+    "environment":
+      "SERVICE_ID": "identity"
+      "PORT": "8080"
+      "DEPENDENCIES": "{}"
+    "ports":
+      - "127.0.0.1:8105:8080"
+    "read_only": true
+    "tmpfs":
+      - "/tmp"
+    "cap_drop":
+      - "ALL"
+    "security_opt":
+      - "no-new-privileges:true"
+  "payments":
+    "build":
+      "context": "."
+      "dockerfile": "src/mock/Dockerfile"
+    "environment":
+      "SERVICE_ID": "payments"
+      "PORT": "8080"
+      "DEPENDENCIES": "{}"
+    "ports":
+      - "127.0.0.1:8106:8080"
+    "read_only": true
+    "tmpfs":
+      - "/tmp"
+    "cap_drop":
+      - "ALL"
+    "security_opt":
+      - "no-new-privileges:true"
+  "notifications":
+    "build":
+      "context": "."
+      "dockerfile": "src/mock/Dockerfile"
+    "environment":
+      "SERVICE_ID": "notifications"
+      "PORT": "8080"
+      "DEPENDENCIES": "{}"
+    "ports":
+      - "127.0.0.1:8107:8080"
+    "read_only": true
+    "tmpfs":
+      - "/tmp"
+    "cap_drop":
+      - "ALL"
+    "security_opt":
+      - "no-new-privileges:true"

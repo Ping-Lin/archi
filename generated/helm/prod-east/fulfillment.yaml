@@ -1,0 +1,20 @@
+"project": "fulfillment"
+"context": "prod-east"
+"services":
+  -
+    "id": "inventory"
+    "replicas": 3
+    "image":
+      "repository": "example.invalid/archi/inventory"
+      "tag": "1.4.0"
+    "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    "dependencies": {}
+  -
+    "id": "shipping"
+    "replicas": 3
+    "image":
+      "repository": "example.invalid/archi/shipping"
+      "tag": "1.4.0"
+    "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    "dependencies":
+      "inventory": "http://inventory.archi-prod.svc.cluster.local:8080"

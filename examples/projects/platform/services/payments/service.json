@@ -1,0 +1,11 @@
+{
+  "id": "payments",
+  "name": "Payment Adapter",
+  "project": "platform",
+  "layer": "integration",
+  "description": "Simulates payment authorization",
+  "port": 8106,
+  "repoPath": "services/payments",
+  "dependencies": [],
+  "simulation": true
+}

@@ -1,0 +1,13 @@
+{
+  "id": "platform",
+  "name": "Platform",
+  "owner": "Platform team",
+  "repo": "https://example.com/repos/platform",
+  "description": "Identity, payment adapters and notifications",
+  "simulation": true,
+  "services": [
+    "identity",
+    "payments",
+    "notifications"
+  ]
+}

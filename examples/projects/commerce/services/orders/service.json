@@ -1,0 +1,44 @@
+{
+  "id": "orders",
+  "name": "Order Service",
+  "project": "commerce",
+  "layer": "domain",
+  "description": "Coordinates checkout and fulfillment",
+  "port": 8101,
+  "repoPath": "services/orders",
+  "dependencies": [
+    {
+      "id": "dep-4",
+      "source": "orders",
+      "target": "inventory",
+      "protocol": "gRPC",
+      "label": "Reserve stock",
+      "evidence": "design-spec"
+    },
+    {
+      "id": "dep-5",
+      "source": "orders",
+      "target": "payments",
+      "protocol": "gRPC",
+      "label": "Authorize payment",
+      "evidence": "design-spec"
+    },
+    {
+      "id": "dep-6",
+      "source": "orders",
+      "target": "shipping",
+      "protocol": "HTTP",
+      "label": "Create shipment",
+      "evidence": "design-spec"
+    },
+    {
+      "id": "dep-8",
+      "source": "orders",
+      "target": "notifications",
+      "protocol": "AMQP",
+      "label": "Order placed",
+      "evidence": "design-spec"
+    }
+  ],
+  "simulation": true
+}

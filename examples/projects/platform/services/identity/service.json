@@ -1,0 +1,11 @@
+{
+  "id": "identity",
+  "name": "Identity Service",
+  "project": "platform",
+  "layer": "domain",
+  "description": "Checks customer identity",
+  "port": 8105,
+  "repoPath": "services/identity",
+  "dependencies": [],
+  "simulation": true
+}

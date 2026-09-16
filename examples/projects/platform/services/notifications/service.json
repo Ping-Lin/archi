@@ -1,0 +1,11 @@
+{
+  "id": "notifications",
+  "name": "Notification Worker",
+  "project": "platform",
+  "layer": "integration",
+  "description": "Simulates an asynchronous notification consumer",
+  "port": 8107,
+  "repoPath": "services/notifications",
+  "dependencies": [],
+  "simulation": true
+}

@@ -1,0 +1,13 @@
+{
+  "id": "commerce",
+  "name": "Commerce",
+  "owner": "Experience team",
+  "repo": "https://example.com/repos/commerce",
+  "description": "Customer entry and order lifecycle",
+  "simulation": true,
+  "services": [
+    "gateway",
+    "orders",
+    "catalog"
+  ]
+}

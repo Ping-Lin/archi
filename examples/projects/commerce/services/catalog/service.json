@@ -1,0 +1,11 @@
+{
+  "id": "catalog",
+  "name": "Catalog Service",
+  "project": "commerce",
+  "layer": "domain",
+  "description": "Provides product metadata",
+  "port": 8102,
+  "repoPath": "services/catalog",
+  "dependencies": [],
+  "simulation": true
+}

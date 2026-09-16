@@ -1,0 +1,20 @@
+{
+  "id": "shipping",
+  "name": "Shipping Service",
+  "project": "fulfillment",
+  "layer": "integration",
+  "description": "Arranges shipment",
+  "port": 8104,
+  "repoPath": "services/shipping",
+  "dependencies": [
+    {
+      "id": "dep-7",
+      "source": "shipping",
+      "target": "inventory",
+      "protocol": "gRPC",
+      "label": "Confirm allocation",
+      "evidence": "design-spec"
+    }
+  ],
+  "simulation": true
+}

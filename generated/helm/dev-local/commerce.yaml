@@ -1,0 +1,34 @@
+"project": "commerce"
+"context": "dev-local"
+"services":
+  -
+    "id": "gateway"
+    "replicas": 1
+    "image":
+      "repository": "example.invalid/archi/gateway"
+      "tag": "1.5.0-dev"
+    "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    "dependencies":
+      "identity": "http://identity.archi-dev.svc.cluster.local:8080"
+      "orders": "http://orders.archi-dev.svc.cluster.local:8080"
+      "catalog": "http://catalog.archi-dev.svc.cluster.local:8080"
+  -
+    "id": "orders"
+    "replicas": 1
+    "image":
+      "repository": "example.invalid/archi/orders"
+      "tag": "1.5.0-dev"
+    "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    "dependencies":
+      "inventory": "http://inventory.archi-dev.svc.cluster.local:8080"
+      "payments": "http://payments.archi-dev.svc.cluster.local:8080"
+      "shipping": "http://shipping.archi-dev.svc.cluster.local:8080"
+      "notifications": "http://notifications.archi-dev.svc.cluster.local:8080"
+  -
+    "id": "catalog"
+    "replicas": 1
+    "image":
+      "repository": "example.invalid/archi/catalog"
+      "tag": "1.5.0-dev"
+    "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    "dependencies": {}

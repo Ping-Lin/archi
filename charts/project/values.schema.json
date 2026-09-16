@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["project", "context", "services"],
+  "properties": {
+    "project": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,47}$"},
+    "context": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,47}$"},
+    "services": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "replicas", "image", "sourceCommit", "dependencies"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,47}$"},
+        "replicas": {"type": "integer", "minimum": 0, "maximum": 100},
+        "sourceCommit": {"type": "string", "pattern": "^([a-f0-9]{40})?$"},
+        "image": {"type": "object", "additionalProperties": false, "required": ["repository", "tag"], "properties": {
+          "repository": {"type": "string", "minLength": 1},
+          "tag": {"type": "string", "minLength": 1}
+        }},
+        "dependencies": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^http://"}}
+      }
+    }}
+  }
+}

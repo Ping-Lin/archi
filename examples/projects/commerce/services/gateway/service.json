@@ -1,0 +1,36 @@
+{
+  "id": "gateway",
+  "name": "API Gateway",
+  "project": "commerce",
+  "layer": "edge",
+  "description": "Routes incoming customer requests",
+  "port": 8100,
+  "repoPath": "services/gateway",
+  "dependencies": [
+    {
+      "id": "dep-1",
+      "source": "gateway",
+      "target": "identity",
+      "protocol": "HTTP",
+      "label": "Authenticate",
+      "evidence": "design-spec"
+    },
+    {
+      "id": "dep-2",
+      "source": "gateway",
+      "target": "orders",
+      "protocol": "HTTP",
+      "label": "Checkout",
+      "evidence": "design-spec"
+    },
+    {
+      "id": "dep-3",
+      "source": "gateway",
+      "target": "catalog",
+      "protocol": "HTTP",
+      "label": "Browse",
+      "evidence": "design-spec"
+    }
+  ],
+  "simulation": true
+}

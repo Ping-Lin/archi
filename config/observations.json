@@ -1,0 +1,269 @@
+{
+  "apiVersion": "archi/v1alpha1",
+  "observations": [
+    {
+      "deployment": "dev-local--gateway",
+      "image": {
+        "repository": "example.invalid/archi/gateway",
+        "tag": "1.5.0-dev"
+      },
+      "readyReplicas": 1,
+      "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "dev-local--orders",
+      "image": {
+        "repository": "example.invalid/archi/orders",
+        "tag": "1.5.0-dev"
+      },
+      "readyReplicas": 1,
+      "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "dev-local--catalog",
+      "image": {
+        "repository": "example.invalid/archi/catalog",
+        "tag": "1.5.0-dev"
+      },
+      "readyReplicas": 1,
+      "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "dev-local--inventory",
+      "image": {
+        "repository": "example.invalid/archi/inventory",
+        "tag": "1.5.0-dev"
+      },
+      "readyReplicas": 1,
+      "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "dev-local--shipping",
+      "image": {
+        "repository": "example.invalid/archi/shipping",
+        "tag": "1.5.0-dev"
+      },
+      "readyReplicas": 1,
+      "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "dev-local--identity",
+      "image": {
+        "repository": "example.invalid/archi/identity",
+        "tag": "1.5.0-dev"
+      },
+      "readyReplicas": 1,
+      "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "dev-local--payments",
+      "image": {
+        "repository": "example.invalid/archi/payments",
+        "tag": "1.5.0-dev"
+      },
+      "readyReplicas": 1,
+      "sourceCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "dev-local--notifications",
+      "image": {
+        "repository": "example.invalid/archi/notifications",
+        "tag": "1.5.0-dev"
+      },
+      "readyReplicas": 1,
+      "sourceCommit": null,
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-east--gateway",
+      "image": {
+        "repository": "example.invalid/archi/gateway",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-east--orders",
+      "image": {
+        "repository": "example.invalid/archi/orders",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-east--catalog",
+      "image": {
+        "repository": "example.invalid/archi/catalog",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-east--inventory",
+      "image": {
+        "repository": "example.invalid/archi/inventory",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-east--shipping",
+      "image": {
+        "repository": "example.invalid/archi/shipping",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-east--identity",
+      "image": {
+        "repository": "example.invalid/archi/identity",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-east--payments",
+      "image": {
+        "repository": "example.invalid/archi/payments",
+        "tag": "1.3.9"
+      },
+      "readyReplicas": 2,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-east--notifications",
+      "image": {
+        "repository": "example.invalid/archi/notifications",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": null,
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-west--gateway",
+      "image": {
+        "repository": "example.invalid/archi/gateway",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-west--orders",
+      "image": {
+        "repository": "example.invalid/archi/orders",
+        "tag": "1.3.2"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-west--catalog",
+      "image": {
+        "repository": "example.invalid/archi/catalog",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-west--inventory",
+      "image": {
+        "repository": "example.invalid/archi/inventory",
+        "tag": "1.3.2"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-west--shipping",
+      "image": {
+        "repository": "example.invalid/archi/shipping",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-west--identity",
+      "image": {
+        "repository": "example.invalid/archi/identity",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-west--payments",
+      "image": {
+        "repository": "example.invalid/archi/payments",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    },
+    {
+      "deployment": "prod-west--notifications",
+      "image": {
+        "repository": "example.invalid/archi/notifications",
+        "tag": "1.4.0"
+      },
+      "readyReplicas": 3,
+      "sourceCommit": null,
+      "evidence": "cluster-snapshot",
+      "observedAt": "2026-09-16T12:00:00Z"
+    }
+  ]
+}

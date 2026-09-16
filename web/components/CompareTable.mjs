@@ -1,0 +1,11 @@
+const {computed}=Vue;
+export default {
+ props:['data','left','right','search','project'],emits:['select','update:left','update:right'],
+ setup(props){
+  const rows=computed(()=>props.data.services.filter(s=>(!props.project||s.project===props.project)&&(!props.search||`${s.name} ${s.id}`.toLowerCase().includes(props.search.toLowerCase()))).map(s=>{
+   const a=props.data.instances.find(d=>d.service===s.id&&d.context===props.left),b=props.data.instances.find(d=>d.service===s.id&&d.context===props.right);
+   const diff=!a||!b?'missing':a.image.repository!==b.image.repository||a.image.tag!==b.image.tag||a.replicas!==b.replicas||a.sourceCommit!==b.sourceCommit?'different':'same';return {s,a,b,diff};
+  }));return {rows};
+ },
+ template:`<div class="compare"><div class="compare-intro"><span class="eyebrow">ENVIRONMENT COMPARISON</span><h2>One service. Different realities.</h2><p>Compare declared versions and replicas across deployment contexts.</p></div><div class="compare-controls"><label>From<select :value="left" @change="$emit('update:left',$event.target.value)"><option v-for="c in data.contexts" :value="c.id">{{c.name}}</option></select></label><span>⇄</span><label>To<select :value="right" @change="$emit('update:right',$event.target.value)"><option v-for="c in data.contexts" :value="c.id">{{c.name}}</option></select></label></div><div class="table-scroll"><table><thead><tr><th>Logical service</th><th>{{left}}</th><th>{{right}}</th><th>Difference</th></tr></thead><tbody><tr v-for="r in rows" :key="r.s.id"><td><button @click="$emit('select',r.s.id)">{{r.s.name}} ↗</button><small>{{r.s.project}}</small></td><td><strong class="mono">{{r.a?.image.tag??'Not deployed'}}</strong><small>{{r.a?.replicas??'—'}} replicas · {{r.a?.sourceCommit?.slice(0,7)??'commit unknown'}}</small></td><td><strong class="mono">{{r.b?.image.tag??'Not deployed'}}</strong><small>{{r.b?.replicas??'—'}} replicas · {{r.b?.sourceCommit?.slice(0,7)??'commit unknown'}}</small></td><td><span class="status" :class="r.diff==='same'?'aligned':'drift'">{{r.diff}}</span></td></tr></tbody></table></div><div v-if="!rows.length" class="empty-state">No matching services. Clear your filters to see the system.</div><p class="compare-footnote">“Same” compares declared values only. Unknown commits do not prove identical source code; inspect observed evidence separately.</p></div>`
+};

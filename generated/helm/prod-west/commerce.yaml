@@ -1,0 +1,34 @@
+"project": "commerce"
+"context": "prod-west"
+"services":
+  -
+    "id": "gateway"
+    "replicas": 3
+    "image":
+      "repository": "example.invalid/archi/gateway"
+      "tag": "1.4.0"
+    "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    "dependencies":
+      "identity": "http://identity.archi-prod.svc.cluster.local:8080"
+      "orders": "http://orders.archi-prod.svc.cluster.local:8080"
+      "catalog": "http://catalog.archi-prod.svc.cluster.local:8080"
+  -
+    "id": "orders"
+    "replicas": 3
+    "image":
+      "repository": "example.invalid/archi/orders"
+      "tag": "1.3.2"
+    "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    "dependencies":
+      "inventory": "http://inventory.archi-prod.svc.cluster.local:8080"
+      "payments": "http://payments.archi-prod.svc.cluster.local:8080"
+      "shipping": "http://shipping.archi-prod.svc.cluster.local:8080"
+      "notifications": "http://notifications.archi-prod.svc.cluster.local:8080"
+  -
+    "id": "catalog"
+    "replicas": 3
+    "image":
+      "repository": "example.invalid/archi/catalog"
+      "tag": "1.4.0"
+    "sourceCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    "dependencies": {}
