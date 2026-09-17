@@ -1,0 +1,9 @@
+profile: dev
+application:
+  clients:
+    a:
+      url: http://gateway.archi-dev.svc.cluster.local:8080
+workloads:
+  checkout: {image: "example.invalid/checkout:dev", replicas: 1}
+  gateway: {image: "example.invalid/gateway:1.0", replicas: 1}
+  legacy-worker: {image: "example.invalid/legacy-worker:0.1", replicas: 1}

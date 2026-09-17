@@ -16,8 +16,10 @@ jobs:
       - uses: azure/setup-helm@v4.3.0
         with:
           version: v3.17.3
+      - run: npm ci --ignore-scripts
       - run: npm run verify
       - run: npm run check:helm
+      - run: npm run check:analysis
   browser:
     runs-on: ubuntu-latest
     steps:
@@ -25,9 +27,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.17.3
+      - run: npm ci --ignore-scripts
       - run: npm install --no-save --package-lock=false playwright@1.51.1
       - run: npx playwright install --with-deps chromium
       - run: |
+          npm run check:analysis
           npm run dev > /tmp/archi-server.log 2>&1 &
           trap 'kill $! 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do
@@ -35,6 +42,7 @@ jobs:
             sleep 1
           done
           node tests/browser.mjs
+          node tests/analysis-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

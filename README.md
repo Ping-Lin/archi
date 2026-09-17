@@ -6,7 +6,8 @@ The first version is a complete fictional commerce sandbox: 3 projects, 8 servic
 
 ## Run
 
-Requires Node.js 22+. The application has **no npm installation or CDN requirement**.
+Requires Node.js 22+. The original demo has no npm installation or CDN requirement.
+The new analysis workspace additionally requires `npm ci` and Helm v3.17.3.
 
 ```bash
 git clone https://github.com/Ping-Lin/archi.git
@@ -28,6 +29,22 @@ fails and closes servers it already started. The explorer is read-only; edit the
 authored configuration to change the model.
 
 ## Explore
+
+Open **Evidence lab** in the sidebar to inspect the new source-analysis slice:
+
+```bash
+npm ci --ignore-scripts
+npm run check:analysis
+npm run dev
+# http://127.0.0.1:4173/?view=analysis
+```
+
+It reads real Helm output and parsed synthetic Java source, evaluates clients A/B/C
+independently in dev/prod, and exposes the supporting facts, exclusions and unknowns.
+Use `npm run analyze -- --revision HEAD` for immutable Git inputs. This is bounded
+synthetic analysis, not production discovery. See [the v2 analysis contract](docs/model-v2.md).
+
+The original demo includes:
 
 - **System / L1:** project boundaries and aggregated cross-project dependencies.
 - **Services / L2:** inspect nodes, ownership, relationships and source links.
@@ -112,11 +129,13 @@ for the migration path to Vite as the UI grows.
 
 ## Verification
 
-`npm run verify` checks generated drift and runs contract, generation, Vue template
+`npm run verify` checks generated drift and runs v1/v2 contract, generation, Vue template
 compilation, HTTP runtime and static server tests. It also runs an isolated ninth-service
 extension through the setup skill. `npm run check:helm` lints and
 renders every context/project. GitHub Actions also runs browser interactions and
-uploads desktop/mobile screenshots as `architecture-previews`.
+uploads desktop/mobile screenshots as `architecture-previews`. Analysis integration
+tests require Helm; local skips are reported explicitly and CI rejects a missing Helm gate.
+`npm run check:analysis` validates against the independently authored A/B/C oracle.
 
 For the optional browser gate locally:
 

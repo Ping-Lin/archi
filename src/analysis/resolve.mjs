@@ -1,0 +1,405 @@
+import { hash, identify, VERSION, assertSnapshot } from "./contract.mjs";
+import { resourceKey } from "./helm.mjs";
+
+function endpoint(value) {
+  try {
+    const url = new URL(value);
+    if (
+      !["http:", "https:", "tcp:"].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash
+    )
+      return null;
+    return url.href.replace(/\/$/, "");
+  } catch {
+    return null;
+  }
+}
+
+export function readObservations(text, env, ledger) {
+  const absent = {
+    resources: [],
+    runtime: [],
+    coverage: "unavailable",
+    collectedAt: null,
+    release: null,
+    diagnostics: [],
+  };
+  if (!text) return absent;
+  try {
+    const data = JSON.parse(text);
+    if (
+      data.schemaVersion !== VERSION ||
+      data.environment !== env.id ||
+      !["complete", "partial", "failed"].includes(data.coverage) ||
+      !Array.isArray(data.resources) ||
+      !Array.isArray(data.runtime) ||
+      !Number.isFinite(Date.parse(data.collectedAt))
+    )
+      throw new Error("Invalid observation scope or collection metadata");
+    const evidenceId = ledger.recordEvidence({
+      type: "deployment_metadata",
+      locator: env.observations,
+      contentHash: hash(text),
+      collectedAt: data.collectedAt,
+      coverage: data.coverage,
+    });
+    if (data.coverage === "failed")
+      return {
+        ...absent,
+        coverage: "failed",
+        collectedAt: data.collectedAt,
+        evidenceId,
+        diagnostics: [
+          {
+            code: "COLLECTION_FAILED",
+            message:
+              "Failed collection cannot establish resource presence, absence or runtime support",
+          },
+        ],
+      };
+    const resources = [];
+    for (const object of data.resources) {
+      if (object.metadata?.namespace !== env.namespace)
+        throw new Error("Observation resource outside declared namespace");
+      const key = resourceKey(object, env);
+      if (!key) throw new Error("Unsupported observation resource");
+      if (resources.some((r) => r.key === key))
+        throw new Error("Duplicate observation resource");
+      resources.push({ key, object, evidenceId });
+    }
+    for (const event of data.runtime)
+      if (
+        typeof event.candidate !== "string" ||
+        typeof event.target !== "string" ||
+        !Number.isFinite(Date.parse(event.observedAt)) ||
+        Date.parse(event.observedAt) > Date.parse(data.collectedAt)
+      )
+        throw new Error("Invalid runtime event");
+    return { ...data, resources, evidenceId, diagnostics: [] };
+  } catch (error) {
+    return {
+      ...absent,
+      coverage: "failed",
+      diagnostics: [{ code: "OBSERVATION_INVALID", message: error.message }],
+    };
+  }
+}
+
+export function resolveCandidates(
+  extracted,
+  properties,
+  env,
+  resources,
+  observations,
+  ledger,
+) {
+  const candidates = [],
+    dependencies = [];
+  const targetEvidence = ledger.recordEvidence({
+    type: "declared_target_catalog",
+    locator: `archi.config/environments/${env.id}/targets`,
+    contentHash: hash(env.targets),
+  });
+  const targetFact = ledger.fact("targets.catalog", env.id, env.targets, [
+    targetEvidence,
+  ]);
+  for (const candidate of extracted.candidates) {
+    const facts = [
+      candidate.factId,
+      properties.scopeFact,
+      targetFact,
+      ...(properties.chains[candidate.key] ?? []),
+    ];
+    const reasons = [...candidate.unsupported];
+    let eligibility = "enabled";
+    if (candidate.unsupported.length || !properties.complete)
+      eligibility = "unknown";
+    const sameName = extracted.candidates.filter(
+      (c) => c.name === candidate.name,
+    );
+    if (sameName.length > 1) {
+      eligibility = "unknown";
+      reasons.push("Multiple candidate registrations share a bean name");
+      facts.push(...sameName.map((c) => c.factId));
+    }
+    if (!properties.complete)
+      reasons.push("Effective properties or active profiles are incomplete");
+    if (eligibility === "enabled")
+      for (const condition of candidate.conditions) {
+        if (
+          condition.kind === "profile" &&
+          !env.profiles.includes(condition.value)
+        ) {
+          eligibility = "disabled";
+          reasons.push(`Profile ${condition.value} is inactive`);
+        }
+        if (condition.kind === "property") {
+          facts.push(...(properties.chains[condition.key] ?? []));
+          if (
+            properties.values[condition.key]?.toLowerCase() !==
+            condition.value.toLowerCase()
+          ) {
+            eligibility = "disabled";
+            reasons.push(
+              `${condition.key}=${properties.values[condition.key] ?? "<absent>"}; requires ${condition.value}`,
+            );
+          }
+        }
+      }
+    if (eligibility === "enabled")
+      reasons.push(
+        "Explicit bean registration and supported conditions are satisfied; execution is not proven",
+      );
+    const value = properties.values[candidate.key] ?? null,
+      url = properties.complete ? endpoint(value) : null;
+    const matches = url
+      ? env.targets.filter((t) => endpoint(t.url) === url)
+      : [];
+    let targetResolution =
+      matches.length === 1
+        ? "unique"
+        : matches.length > 1
+          ? "ambiguous"
+          : "unresolved";
+    const target = matches.length === 1 ? matches[0] : null;
+    if (target && target.kind !== "external") {
+      const parsed = new URL(target.url);
+      const port =
+        Number(parsed.port) ||
+        (parsed.protocol === "https:"
+          ? 443
+          : parsed.protocol === "http:"
+            ? 80
+            : 0);
+      const service = resources.find(
+        (r) =>
+          r.kind === "Service" &&
+          r.name === target.id &&
+          (r.spec?.ports ?? []).some((p) => p.port === port) &&
+          [
+            r.name,
+            `${r.name}.${r.namespace}`,
+            `${r.name}.${r.namespace}.svc`,
+            `${r.name}.${r.namespace}.svc.cluster.local`,
+          ].includes(parsed.hostname),
+      );
+      if (!service) {
+        targetResolution = "unresolved";
+        reasons.push(
+          "Internal target catalog entry has no matching rendered Service/DNS",
+        );
+      } else facts.push(service.factId);
+    }
+    reasons.push(
+      targetResolution === "unique"
+        ? `Endpoint maps to ${target.id} using the reviewed target catalog`
+        : targetResolution === "ambiguous"
+          ? "Multiple target catalog entries match the endpoint"
+          : "Endpoint or supported target mapping is unavailable",
+    );
+    const runtime =
+      observations.coverage === "failed"
+        ? []
+        : observations.runtime.filter((e) => e.candidate === candidate.name);
+    for (const event of runtime) {
+      const e = ledger.recordEvidence({
+        type: "runtime_observation",
+        locator: env.observations,
+        contentHash: hash(event),
+        observedAt: event.observedAt,
+      });
+      facts.push(ledger.fact("runtime.target", candidate.id, event, [e]));
+    }
+    const consistency = runtime.length
+      ? targetResolution === "unique" &&
+        runtime.every((e) => e.target === target.id) &&
+        eligibility === "enabled"
+        ? "compatible"
+        : "conflicting"
+      : "unevaluated";
+    const runtimeSupport = runtime.length ? "observed" : "unavailable";
+    const outcome = {
+      eligibility,
+      targetResolution,
+      target: targetResolution === "unique" ? target.id : null,
+      alternatives: matches.map((t) => t.id),
+      runtimeSupport,
+      consistency,
+    };
+    const resolutionId = ledger.resolve(
+      "explicit-bean-to-endpoint",
+      [...new Set(facts)],
+      outcome,
+      reasons,
+    );
+    const resolved = {
+      ...candidate,
+      ...outcome,
+      value,
+      observedAt:
+        runtime
+          .map((e) => e.observedAt)
+          .sort()
+          .at(-1) ?? null,
+      resolutionId,
+      reasons,
+    };
+    candidates.push(resolved);
+    if (eligibility === "enabled" && targetResolution === "unique")
+      dependencies.push({
+        id: identify("dependency", {
+          environment: env.id,
+          candidate: candidate.id,
+          target: target.id,
+        }),
+        environment: env.id,
+        source: candidate.source,
+        target: target.id,
+        targetKind: target.kind,
+        protocol: new URL(target.url).protocol.replace(":", "").toUpperCase(),
+        candidateId: candidate.id,
+        resolutionId,
+      });
+  }
+  return { candidates, dependencies };
+}
+
+function selectedSpec(object) {
+  const spec = object.spec ?? {};
+  return {
+    replicas: spec.replicas ?? null,
+    images: (spec.template?.spec?.containers ?? [])
+      .map((c) => ({ name: c.name, image: c.image }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  };
+}
+export function compareResources(resources, observations) {
+  const keys = [
+    ...new Set([
+      ...resources.map((r) => r.key),
+      ...observations.resources.map((r) => r.key),
+    ]),
+  ].sort();
+  return keys.map((key) => {
+    const source = resources.find((r) => r.key === key),
+      observed = observations.resources.find((r) => r.key === key);
+    const differences = [];
+    if (source && observed && source.kind === "Deployment") {
+      const a = selectedSpec(source),
+        b = selectedSpec(observed.object);
+      if (hash(a.images) !== hash(b.images)) differences.push("images");
+      // Scaling policy is unknown in this slice: replica differences are informational.
+    }
+    const live = observed?.object;
+    const health =
+      live?.kind === "Deployment" &&
+      Number.isInteger(live.status?.readyReplicas) &&
+      Number.isInteger(live.spec?.replicas)
+        ? live.status.readyReplicas >= live.spec.replicas
+          ? "ready"
+          : "progressing"
+        : "unknown";
+    return {
+      key,
+      name: source?.name ?? live?.metadata.name,
+      kind: source?.kind ?? live?.kind,
+      presence:
+        source && observed
+          ? "both"
+          : source
+            ? observations.coverage === "complete"
+              ? "source-only"
+              : "source-present; deployment-unknown"
+            : "observed-only",
+      comparison:
+        source && observed && source.kind === "Deployment"
+          ? differences.length
+            ? "different"
+            : "matching-supported-fields"
+          : "unavailable",
+      differences,
+      health,
+      replicas: live
+        ? {
+            desired: source?.spec?.replicas ?? null,
+            live: live.spec?.replicas ?? null,
+            ready: live.status?.readyReplicas ?? null,
+            ownership: "unknown; excluded from drift",
+          }
+        : null,
+      evidenceIds: [source?.evidenceId, observed?.evidenceId].filter(Boolean),
+      uid: live?.metadata.uid ?? null,
+    };
+  });
+}
+
+export function buildSnapshot({
+  env,
+  inputLock,
+  ledger,
+  helm,
+  extracted,
+  properties,
+  observations,
+}) {
+  const { candidates, dependencies } = resolveCandidates(
+    extracted,
+    properties,
+    env,
+    helm.resources,
+    observations,
+    ledger,
+  );
+  const snapshot = {
+    schemaVersion: VERSION,
+    environment: env.id,
+    inputLock,
+    candidates,
+    dependencies,
+    resources: helm.resources,
+    resourceComparisons: compareResources(helm.resources, observations),
+    observation: {
+      coverage: observations.coverage,
+      collectedAt: observations.collectedAt,
+      releaseCorrespondence: "unverified",
+      release: observations.release ?? null,
+    },
+    evidence: ledger.evidence,
+    facts: ledger.facts,
+    resolutions: ledger.resolutions,
+    coverage: [
+      {
+        ...helm.coverage,
+        status: helm.diagnostics.length ? "partial" : "complete",
+      },
+      extracted.coverage,
+      {
+        collector: "properties",
+        status: properties.complete ? "complete" : "partial",
+        scope: env.id,
+        meaning: "Reviewed property-source boundary, not live configuration",
+      },
+    ],
+    diagnostics: [
+      ...helm.diagnostics,
+      ...extracted.diagnostics,
+      ...properties.diagnostics,
+      ...observations.diagnostics,
+    ],
+  };
+  assertSnapshot(snapshot);
+  return { ...snapshot, contentHash: hash(snapshot) };
+}
+
+export function assessFreshness(observedAt, asOf, maxAgeSeconds = 3600) {
+  if (!observedAt) return "unknown";
+  const age = (Date.parse(asOf) - Date.parse(observedAt)) / 1000;
+  return !Number.isFinite(age) || age < 0
+    ? "unknown"
+    : age > maxAgeSeconds
+      ? "stale"
+      : "fresh";
+}

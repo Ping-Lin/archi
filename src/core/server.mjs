@@ -11,8 +11,8 @@ export function createExplorer(root) {
     if(req.method!=='GET'){res.writeHead(405);res.end();return;}
     try {
       const name=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
-      const target=path.resolve(web,'.'+(name==='/'?'/index.html':name));
-      if(!target.startsWith(web+path.sep))throw new Error('invalid path');
+      const target=name==='/analysis.json'?path.resolve(root,'artifacts/analysis/analysis.json'):path.resolve(web,'.'+(name==='/'?'/index.html':name));
+      if(name!=='/analysis.json'&&!target.startsWith(web+path.sep))throw new Error('invalid path');
       const content=await readFile(target);
       const mime={'.html':'text/html','.css':'text/css','.mjs':'text/javascript','.js':'text/javascript','.json':'application/json','.svg':'image/svg+xml'}[path.extname(target)]??'application/octet-stream';
       res.writeHead(200,{'Content-Type':mime+'; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(content);

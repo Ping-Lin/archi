@@ -1,0 +1,5 @@
+apiVersion: v2
+name: evidence-lab
+description: Synthetic source-analysis fixture; no live deployment is intended
+type: application
+version: 0.1.0

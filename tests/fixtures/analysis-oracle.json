@@ -1,0 +1,14 @@
+{
+  "dev": {
+    "clientA": {"eligibility":"enabled", "target":"gateway", "targetResolution":"unique"},
+    "clientB": {"eligibility":"enabled", "target":"sandbox", "targetResolution":"unique"},
+    "clientC": {"eligibility":"disabled", "target":"legacy", "targetResolution":"unique"},
+    "legacyClient": {"eligibility":"unknown", "target":"legacy", "targetResolution":"unique"}
+  },
+  "prod": {
+    "clientA": {"eligibility":"enabled", "target":"gateway", "targetResolution":"unique"},
+    "clientB": {"eligibility":"disabled", "target":"sandbox", "targetResolution":"unique"},
+    "clientC": {"eligibility":"disabled", "target":"legacy", "targetResolution":"unique"},
+    "legacyClient": {"eligibility":"unknown", "target":"legacy", "targetResolution":"unique"}
+  }
+}

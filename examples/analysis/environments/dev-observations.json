@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "archi/analysis-v2alpha1",
+  "environment": "dev",
+  "collectedAt": "2026-09-17T00:00:00Z",
+  "coverage": "complete",
+  "release": {"sourceCommit": null, "note": "Synthetic fixture; no verified source-to-artifact binding"},
+  "resources": [
+    {
+      "apiVersion": "apps/v1", "kind": "Deployment",
+      "metadata": {"name":"checkout-dev-checkout", "namespace":"archi-dev", "uid":"synthetic-checkout-001"},
+      "spec": {"replicas":1, "template":{"spec":{"containers":[{"name":"app", "image":"example.invalid/checkout:dev"}]}}},
+      "status": {"readyReplicas":0}
+    },
+    {
+      "apiVersion": "apps/v1", "kind": "Deployment",
+      "metadata": {"name":"unmanaged-worker", "namespace":"archi-dev", "uid":"synthetic-unmanaged-001"},
+      "spec": {"replicas":1, "template":{"spec":{"containers":[{"name":"app", "image":"example.invalid/unmanaged:1"}]}}},
+      "status": {"readyReplicas":1}
+    }
+  ],
+  "runtime": [
+    {"candidate":"clientA", "target":"gateway", "observedAt":"2026-09-16T23:59:00Z"},
+    {"candidate":"clientB", "target":"sandbox", "observedAt":"2026-09-16T23:59:00Z"}
+  ]
+}

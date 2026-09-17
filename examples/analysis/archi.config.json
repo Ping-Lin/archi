@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "archi/analysis-v2alpha1",
+  "simulation": true,
+  "name": "Checkout · evidence lab",
+  "source": {
+    "service": "checkout",
+    "files": ["examples/analysis/application/Clients.java"],
+    "clientTypes": ["EndpointClient"]
+  },
+  "helm": {
+    "chart": "examples/analysis/chart",
+    "version": "v3.17.3",
+    "kubeVersion": "1.31.0",
+    "apiVersions": []
+  },
+  "environments": [
+    {
+      "id": "dev", "namespace": "archi-dev", "cluster": "synthetic-dev", "release": "checkout-dev",
+      "profiles": ["dev"], "values": ["examples/analysis/environments/dev.yaml"],
+      "propertyFiles": ["examples/analysis/application/application.yaml"], "propertiesComplete": true,
+      "targets": [
+        {"id":"gateway", "url":"http://gateway.archi-dev.svc.cluster.local:8080", "kind":"gateway"},
+        {"id":"sandbox", "url":"https://sandbox.example.invalid", "kind":"external"},
+        {"id":"legacy", "url":"https://legacy.example.invalid", "kind":"external"}
+      ],
+      "observations": "examples/analysis/environments/dev-observations.json"
+    },
+    {
+      "id": "prod", "namespace": "archi-prod", "cluster": "synthetic-prod", "release": "checkout-prod",
+      "profiles": ["prod"], "values": ["examples/analysis/environments/prod.yaml"],
+      "propertyFiles": ["examples/analysis/application/application.yaml"], "propertiesComplete": true,
+      "targets": [
+        {"id":"gateway", "url":"http://gateway.archi-prod.svc.cluster.local:8080", "kind":"gateway"},
+        {"id":"sandbox", "url":"https://sandbox.example.invalid", "kind":"external"},
+        {"id":"legacy", "url":"https://legacy.example.invalid", "kind":"external"}
+      ],
+      "observations": null
+    }
+  ]
+}

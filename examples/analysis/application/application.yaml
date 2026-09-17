@@ -1,0 +1,8 @@
+clients:
+  a:
+    url: http://old-gateway.example.invalid
+  b:
+    url: https://sandbox.example.invalid
+  c:
+    enabled: false
+    url: https://legacy.example.invalid
