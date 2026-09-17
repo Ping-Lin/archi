@@ -1,0 +1,13 @@
+profile: prod
+workloads:
+  storefront:
+    application:
+      downstream.url: http://orders.commerce-production.svc.cluster.local:8080
+  orders:
+    application:
+      downstream.url: http://inventory.commerce-production.svc.cluster.local:8080
+  inventory:
+    application:
+      downstream.url: https://warehouse.example.invalid
+      audit.url: https://audit.example.invalid
+

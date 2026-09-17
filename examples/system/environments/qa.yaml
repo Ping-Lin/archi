@@ -1,0 +1,13 @@
+profile: qa
+workloads:
+  storefront:
+    application:
+      downstream.url: http://orders.commerce-qa.svc.cluster.local:8080
+  orders:
+    application:
+      downstream.url: http://inventory.commerce-qa.svc.cluster.local:8080
+  inventory:
+    application:
+      downstream.url: https://warehouse.example.invalid
+      audit.url: https://audit.example.invalid
+

@@ -45,3 +45,20 @@ configuration portability regression, not a blinded AI-onboarding evaluation.
 Report mappings, assumptions, unresolved patterns, required core changes, test
 results and the deterministic rerun command. Preserve the current branch/PR
 approval boundary. Do not deploy the synthetic charts.
+
+## Multiple callers in one captured system
+
+Use `examples/system/archi.config.json` for a shared-chart, same-repository system.
+Replace `source` with `sources`; each entry has a unique logical `service`, approved
+files and client types. Every environment must provide `callers` with exactly one
+scope per service: profiles, property files, completeness and observation path.
+Do not inherit one service's runtime observations or property policy into another.
+Observation files are caller-scoped; a shared unqualified event file is rejected.
+
+The environment still owns cluster, namespace, release, values and target catalog.
+Use this mode only when one captured Helm render represents that boundary. Multiple
+matching Deployments remain ambiguous. Cross-repository, cross-namespace and
+independent release composition require a future contract, not ID aliases.
+Candidate expectations use `service/beanName` keys; retain repeated bean names and
+shared Java files as separate caller identities. Run `npm run analyze:system` and
+inspect both the graph and environment comparison for caller isolation.

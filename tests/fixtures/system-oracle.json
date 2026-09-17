@@ -1,0 +1,57 @@
+{
+  "qa": {
+    "storefront/downstream": {
+      "eligibility": "enabled",
+      "target": "orders",
+      "targetResolution": "unique"
+    },
+    "orders/downstream": {
+      "eligibility": "enabled",
+      "target": "inventory",
+      "targetResolution": "unique"
+    },
+    "inventory/downstream": {
+      "eligibility": "enabled",
+      "target": "warehouse",
+      "targetResolution": "unique"
+    },
+    "inventory/audit": {
+      "eligibility": "enabled",
+      "target": "audit",
+      "targetResolution": "unique"
+    },
+    "inventory/dynamic": {
+      "eligibility": "unknown",
+      "target": "warehouse",
+      "targetResolution": "unique"
+    }
+  },
+  "production": {
+    "storefront/downstream": {
+      "eligibility": "enabled",
+      "target": "orders",
+      "targetResolution": "unique"
+    },
+    "orders/downstream": {
+      "eligibility": "enabled",
+      "target": "inventory",
+      "targetResolution": "unique"
+    },
+    "inventory/downstream": {
+      "eligibility": "enabled",
+      "target": "warehouse",
+      "targetResolution": "unique"
+    },
+    "inventory/audit": {
+      "eligibility": "disabled",
+      "target": "audit",
+      "targetResolution": "unique"
+    },
+    "inventory/dynamic": {
+      "eligibility": "unknown",
+      "target": "warehouse",
+      "targetResolution": "unique"
+    }
+  }
+}
+

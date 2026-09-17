@@ -10,7 +10,7 @@ import {
 import path from "node:path";
 import os from "node:os";
 import { execFileSync } from "node:child_process";
-import { hash, validateConfig } from "./contract.mjs";
+import { hash, validateConfig, sourcesFor, callersFor } from "./contract.mjs";
 
 function relative(file) {
   if (
@@ -85,12 +85,14 @@ export async function captureInputs(
       "Vendored binary chart archives unsupported; use expanded locked dependencies",
     );
   const paths = [
-    ...config.source.files,
+    ...sourcesFor(config).flatMap((s) => s.files),
     ...chartFiles,
     ...config.environments.flatMap((e) => [
       ...e.values,
-      ...e.propertyFiles,
-      ...(e.observations ? [e.observations] : []),
+      ...callersFor(config, e).flatMap(({ env }) => [
+        ...env.propertyFiles,
+        ...(env.observations ? [env.observations] : []),
+      ]),
     ]),
   ];
   for (const file of paths) await read(file);
@@ -107,16 +109,18 @@ export async function captureInputs(
     },
     lockFor(env, tools) {
       const selected = [
-        ...config.source.files,
+        ...sourcesFor(config).flatMap((s) => s.files),
         ...chartFiles,
         ...env.values,
-        ...env.propertyFiles,
-        ...(env.observations ? [env.observations] : []),
+        ...callersFor(config, env).flatMap(({ env: scope }) => [
+          ...scope.propertyFiles,
+          ...(scope.observations ? [scope.observations] : []),
+        ]),
       ];
       return {
         source: this.source,
         configHash: hash({
-          source: config.source,
+          sources: sourcesFor(config),
           helm: config.helm,
           environment: env,
         }),

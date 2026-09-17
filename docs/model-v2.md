@@ -128,10 +128,10 @@ Disabled/unknown candidates remain selectable below the graph without active edg
 Search filters the view only. Gateway nodes do not imply undiscovered backend routes.
 
 The graph represents the analyzed scope, not an exhaustive repository or cluster
-topology. The current analyzer still has one logical caller per config. External
+topology. Single-caller configs remain supported alongside the multi-caller mode below. External
 targets have a distinct node style; conflicting evidence has a dashed amber edge.
 Generic deterministic source/target positioning replaces fixture-specific coordinates
-for this projection. Layout for large multi-caller graphs remains future work.
+for this projection. Large-graph layout optimization remains future work.
 
 Run `npm run analyze:logistics` to analyze the second fixture into the standard
 output and refresh the UI. Restore the checkout fixture with `npm run check:analysis`.
@@ -141,3 +141,36 @@ resolver changes are required. Its dynamic factory deliberately remains unknown.
 `tests/analysis/onboarding.test.mjs` checks a handwritten oracle and AI-free reruns.
 `tests/graph-browser.mjs` checks both fixtures, environment switching, keyboard edge
 selection, exclusions, empty search and mobile containment.
+
+## Phase three: multiple callers in a shared render
+
+`npm run analyze:system` analyzes `examples/system/archi.config.json`. This additive
+alpha configuration form replaces `source` with `sources`. Each environment replaces
+its top-level profiles/propertyFiles/propertiesComplete/observations with a `callers`
+array that provides those fields for every source service. Mixing forms, missing or
+duplicate caller scopes, duplicate service identities and reused observation paths
+are rejected. A caller cannot also be declared as an external endpoint.
+
+All callers share one repository capture/revision and one chart render per
+environment. Source service labels select exactly one Deployment; supported internal
+targets still require matching Service/DNS/port evidence. This is not a multi-repo,
+multi-namespace, multi-release or per-instance composition contract.
+
+Candidate IDs now include the logical source service, even when multiple callers
+share the same Java file and bean name. Caller-specific ledger records include
+`caller`; shared render facts remain common. Snapshot validation rejects duplicate
+candidate IDs and cross-caller explanations/facts. Composition requires equal
+environment and input locks. Hashes change with this identity extension; existing
+persisted alpha snapshots should be regenerated.
+
+Each caller resolves only its own properties and observations. `observations` and
+resource comparisons retain caller provenance. The aggregate observation is
+conservatively partial (or unavailable when every caller lacks input), with no
+invented aggregate timestamp or release. Per-candidate freshness remains available.
+Environment comparison keys on `(source, bean name)` rather than bean name alone.
+Oracle keys in this mode are `service/beanName`.
+
+The graph places multi-caller dependencies top-down, groups cycles before ranking,
+preserves disconnected callers, and routes parallel edges separately. It creates
+no transitive or inferred gateway edges. This deterministic small-system layout is
+not a general-purpose optimizer for dense graphs.

@@ -1,0 +1,41 @@
+{{- range $name, $workload := .Values.workloads }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $.Release.Name }}-{{ $name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+    spec:
+      containers:
+        - name: app
+          image: {{ printf "example.invalid/%s:synthetic" $name | quote }}
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ $.Values.profile | quote }}
+            - name: SPRING_APPLICATION_JSON
+              value: {{ $workload.application | toJson | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  namespace: {{ $.Release.Namespace }}
+spec:
+  selector:
+    app.kubernetes.io/name: {{ $name }}
+  ports:
+    - port: 8080
+      targetPort: 8080
+{{- end }}
+

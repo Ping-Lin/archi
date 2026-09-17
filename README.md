@@ -4,6 +4,12 @@ A local architecture workspace connecting **logical services → deployment cont
 The first version is a complete fictional commerce sandbox: 3 projects, 8 services,
 3 contexts, 24 deployment instances and a reusable configuration skill.
 
+The evidence workspace also supports multiple analyzed callers in one captured
+Helm environment. Run `npm run analyze:system`, then open `/?view=analysis` to
+inspect the synthetic storefront → orders → inventory chain, caller-scoped
+evidence and QA/production differences. See [phase three findings](docs/phase-three-report.md)
+for validation and the remaining system boundary.
+
 ## Run
 
 Requires Node.js 22+. The original demo has no npm installation or CDN requirement.

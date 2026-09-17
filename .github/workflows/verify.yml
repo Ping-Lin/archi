@@ -46,6 +46,8 @@ jobs:
           node tests/graph-browser.mjs
           npm run analyze:logistics
           ARCHI_GRAPH_FIXTURE=logistics node tests/graph-browser.mjs
+          npm run analyze:system
+          node tests/system-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

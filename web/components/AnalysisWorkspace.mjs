@@ -57,12 +57,11 @@ export default {
         ),
       ),
     );
-    const compareRows = computed(() => [
-      ...new Set(
-        data.value?.snapshots.flatMap((s) => s.candidates.map((c) => c.name)) ??
-          [],
-      ),
-    ]);
+    const compareRows = computed(() => [...new Map(
+      (data.value?.snapshots.flatMap(s => s.candidates) ?? []).map(c => [
+        JSON.stringify([c.source,c.name]), {source:c.source,name:c.name},
+      ]),
+    ).values()]);
     function exportData() {
       const blob = new Blob([JSON.stringify(snapshot.value, null, 2)], {
           type: "application/json",
@@ -118,11 +117,11 @@ export default {
               <div class="resolution-footer"><span>{{resolution.rule}} · {{resolution.version}}</span><code>{{resolution.id}}</code></div>
             </div><div v-else class="analysis-empty">No supported client candidates were extracted. Inspect diagnostics below.</div>
           </div>
-          <div v-else-if="tab==='resources'" class="analysis-table-wrap"><div class="inventory-intro"><h2>Presence is not health.</h2><p>Within the selected chart and namespace. Comparison covers container images only; scaling ownership and release correspondence are unknown.</p></div><table class="analysis-table"><thead><tr><th>Resource</th><th>Presence</th><th>Supported fields</th><th>Observed health</th></tr></thead><tbody><tr v-for="r in snapshot.resourceComparisons" :key="r.key"><td><strong>{{r.name}}</strong><small>{{r.kind}} · {{r.uid??'No observed UID'}}</small></td><td>{{label(r.presence)}}</td><td>{{label(r.comparison)}}</td><td><span class="analysis-status" :class="r.health==='ready'?'enabled':'unknown'">{{r.health}}</span><small v-if="r.replicas">{{r.replicas.ready??'?'}} / {{r.replicas.live??'?'}} ready</small></td></tr></tbody></table></div>
-          <div v-else class="analysis-table-wrap"><div class="inventory-intro"><h2>Independent inputs. Different outcomes.</h2><p>Dev observations never confirm production dependencies. Disabled candidates keep their explanation.</p></div><table class="analysis-table"><thead><tr><th>Candidate</th><th v-for="s in data.snapshots">{{s.environment}}</th></tr></thead><tbody><tr v-for="name in compareRows"><td><strong>{{name}}</strong></td><td v-for="s in data.snapshots"><template v-for="c in s.candidates.filter(c=>c.name===name)"><span class="analysis-status" :class="c.eligibility">{{c.eligibility}}</span><small>{{c.target??c.targetResolution}} · runtime {{c.runtimeSupport}}</small></template><small v-if="!s.candidates.some(c=>c.name===name)">Not discovered within analyzed scope</small></td></tr></tbody></table><div class="snapshot-hashes"><div v-for="s in data.snapshots"><strong>{{s.environment}}</strong><code>{{s.contentHash}}</code></div></div></div>
+          <div v-else-if="tab==='resources'" class="analysis-table-wrap"><div class="inventory-intro"><h2>Presence is not health.</h2><p>Within the selected chart and namespace. Comparison covers container images only; scaling ownership and release correspondence are unknown.</p></div><table class="analysis-table"><thead><tr><th>Resource</th><th>Presence</th><th>Supported fields</th><th>Observed health</th></tr></thead><tbody><tr v-for="r in snapshot.resourceComparisons" :key="JSON.stringify([r.caller,r.key])"><td><strong>{{r.name}}</strong><small>{{r.caller ? r.caller+' · ' : ''}}{{r.kind}} · {{r.uid??'No observed UID'}}</small></td><td>{{label(r.presence)}}</td><td>{{label(r.comparison)}}</td><td><span class="analysis-status" :class="r.health==='ready'?'enabled':'unknown'">{{r.health}}</span><small v-if="r.replicas">{{r.replicas.ready??'?'}} / {{r.replicas.live??'?'}} ready</small></td></tr></tbody></table></div>
+          <div v-else class="analysis-table-wrap"><div class="inventory-intro"><h2>Independent inputs. Different outcomes.</h2><p>Dev observations never confirm production dependencies. Disabled candidates keep their explanation.</p></div><table class="analysis-table"><thead><tr><th>Candidate</th><th v-for="s in data.snapshots">{{s.environment}}</th></tr></thead><tbody><tr v-for="row in compareRows"><td><strong>{{row.source}} / {{row.name}}</strong></td><td v-for="s in data.snapshots"><template v-for="c in s.candidates.filter(c=>c.source===row.source&&c.name===row.name)"><span class="analysis-status" :class="c.eligibility">{{c.eligibility}}</span><small>{{c.target??c.targetResolution}} · runtime {{c.runtimeSupport}}</small></template><small v-if="!s.candidates.some(c=>c.source===row.source&&c.name===row.name)">Not discovered within analyzed scope</small></td></tr></tbody></table><div class="snapshot-hashes"><div v-for="s in data.snapshots"><strong>{{s.environment}}</strong><code>{{s.contentHash}}</code></div></div></div>
           <footer class="analysis-panel-footer"><span>◇ {{snapshot.evidence.length}} evidence records · {{snapshot.facts.length}} facts</span><span>Assessment {{data.run.assessedAt}}</span></footer>
         </section>
-        <details class="analysis-diagnostics"><summary>Analysis coverage & diagnostics <span>{{snapshot.diagnostics.length}} items</span></summary><div class="coverage-grid"><div v-for="c in snapshot.coverage"><strong>{{c.collector}} · {{c.status}}</strong><p>{{c.meaning}}</p></div></div><p v-for="d in snapshot.diagnostics"><code>{{d.code}}</code> {{d.message}}</p><p>Input mode: {{data.run.inputMode}}. SHA-256 locks identify captured bytes. Source commit does not prove the deployed revision.</p></details>
+        <details class="analysis-diagnostics"><summary>Analysis coverage & diagnostics <span>{{snapshot.diagnostics.length}} items</span></summary><div class="coverage-grid"><div v-for="c in snapshot.coverage"><strong>{{c.caller ? c.caller+' · ' : ''}}{{c.collector}} · {{c.status}}</strong><p>{{c.meaning}}</p></div></div><p v-for="d in snapshot.diagnostics"><code>{{d.code}}</code> {{d.caller ? d.caller+': ' : ''}}{{d.message}}</p><p>Input mode: {{data.run.inputMode}}. SHA-256 locks identify captured bytes. Source commit does not prove the deployed revision.</p></details>
         <div class="page-footer"><span>Explain the connection. Preserve the uncertainty.</span><span>Bounded Spring analysis · no live cluster access</span></div>
       </main><main v-else><p>Loading evidence…</p></main>
     </div>

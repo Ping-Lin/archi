@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "archi/analysis-v2alpha1",
+  "environment": "qa",
+  "coverage": "partial",
+  "collectedAt": "2026-09-17T00:00:00Z",
+  "resources": [],
+  "runtime": [
+    {
+      "candidate": "downstream",
+      "target": "inventory",
+      "observedAt": "2026-09-16T23:59:00Z"
+    }
+  ]
+}
+

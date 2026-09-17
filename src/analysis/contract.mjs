@@ -28,45 +28,80 @@ const object = (properties, required = Object.keys(properties)) => ({
   properties,
   required,
 });
-export const configSchema = object({
+const sourceSchema = object({
+  service: string,
+  files: { ...strings, minItems: 1 },
+  clientTypes: { ...strings, minItems: 1 },
+});
+const callerProperties = {
+  profiles: strings,
+  propertyFiles: strings,
+  propertiesComplete: { type: "boolean" },
+  observations: { type: ["string", "null"] },
+};
+const environmentProperties = {
+  id: string,
+  namespace: string,
+  cluster: string,
+  release: string,
+  values: strings,
+  targets: {
+    type: "array",
+    items: object({
+      id: string,
+      url: string,
+      kind: { enum: ["gateway", "external", "service"] },
+    }),
+  },
+};
+const commonConfig = {
   schemaVersion: { const: VERSION },
   simulation: { const: true },
   name: string,
-  source: object({
-    service: string,
-    files: { ...strings, minItems: 1 },
-    clientTypes: { ...strings, minItems: 1 },
-  }),
   helm: object({
     chart: string,
     version: { const: "v3.17.3" },
     kubeVersion: string,
     apiVersions: strings,
   }),
-  environments: {
-    type: "array",
-    minItems: 1,
-    items: object({
-      id: string,
-      namespace: string,
-      cluster: string,
-      release: string,
-      profiles: strings,
-      values: strings,
-      propertyFiles: strings,
-      propertiesComplete: { type: "boolean" },
-      targets: {
+};
+export const configSchema = {
+  oneOf: [
+    object({
+      ...commonConfig,
+      source: sourceSchema,
+      environments: {
         type: "array",
+        minItems: 1,
+        items: object({ ...environmentProperties, ...callerProperties }),
+      },
+    }),
+    object({
+      ...commonConfig,
+      sources: { type: "array", minItems: 2, items: sourceSchema },
+      environments: {
+        type: "array",
+        minItems: 1,
         items: object({
-          id: string,
-          url: string,
-          kind: { enum: ["gateway", "external", "service"] },
+          ...environmentProperties,
+          callers: {
+            type: "array",
+            minItems: 2,
+            items: object({ service: string, ...callerProperties }),
+          },
         }),
       },
-      observations: { type: ["string", "null"] },
     }),
-  },
-});
+  ],
+};
+export const sourcesFor = (config) => config.sources ?? [config.source];
+export const callersFor = (config, env) =>
+  sourcesFor(config).map((source) => ({
+    source,
+    env: env.callers
+      ? { ...env, ...env.callers.find((c) => c.service === source.service) }
+      : env,
+  }));
 const validate = new Ajv({ allErrors: true }).compile(configSchema);
 export function validateConfig(config) {
   if (!validate(config))
@@ -79,6 +114,33 @@ export function validateConfig(config) {
   )
     throw new Error("Duplicate environment ID");
   for (const env of config.environments) {
+    if (config.sources) {
+      const services = config.sources.map((s) => s.service);
+      const callers = env.callers.map((c) => c.service);
+      if (new Set(services).size !== services.length)
+        throw new Error("Duplicate source service");
+      if (
+        new Set(callers).size !== callers.length ||
+        callers.length !== services.length ||
+        services.some((s) => !callers.includes(s))
+      )
+        throw new Error(
+          `Caller scopes must match sources exactly in ${env.id}`,
+        );
+      const observationFiles = env.callers
+        .map((c) => c.observations)
+        .filter(Boolean);
+      if (new Set(observationFiles).size !== observationFiles.length)
+        throw new Error(`Observation files must be caller-scoped in ${env.id}`);
+      if (
+        env.targets.some(
+          (t) => services.includes(t.id) && t.kind === "external",
+        )
+      )
+        throw new Error(
+          `Analyzed caller cannot also be an external target in ${env.id}`,
+        );
+    }
     if (new Set(env.targets.map((t) => t.id)).size !== env.targets.length)
       throw new Error(`Duplicate target ID in ${env.id}`);
     for (const target of env.targets) {
@@ -96,14 +158,19 @@ export function validateConfig(config) {
   return config;
 }
 
-export function createLedger(environment) {
+export function createLedger(environment, caller = null) {
   const evidence = [],
     facts = [],
     resolutions = [];
   function add(collection, type, payload) {
     const record = {
-      id: identify(type, { environment, ...payload }),
+      id: identify(type, {
+        environment,
+        ...(caller ? { caller } : {}),
+        ...payload,
+      }),
       environment,
+      ...(caller ? { caller } : {}),
       ...payload,
     };
     if (!collection.some((r) => r.id === record.id)) collection.push(record);
@@ -158,6 +225,26 @@ export function assertSnapshot(snapshot) {
   for (const candidate of snapshot.candidates)
     if (!resolutions.has(candidate.resolutionId))
       throw new Error("Missing candidate explanation");
+  if (
+    new Set(snapshot.candidates.map((c) => c.id)).size !==
+    snapshot.candidates.length
+  )
+    throw new Error("Duplicate candidate ID");
+  for (const candidate of snapshot.candidates) {
+    const resolution = snapshot.resolutions.find(
+      (r) => r.id === candidate.resolutionId,
+    );
+    if (resolution.caller && resolution.caller !== candidate.source)
+      throw new Error("Cross-caller resolution");
+    if (
+      resolution.caller &&
+      resolution.inputFactIds.some((id) => {
+        const fact = snapshot.facts.find((f) => f.id === id);
+        return fact.caller && fact.caller !== resolution.caller;
+      })
+    )
+      throw new Error("Cross-caller facts");
+  }
   for (const edge of snapshot.dependencies)
     if (
       !resolutions.has(edge.resolutionId) ||

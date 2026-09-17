@@ -1,7 +1,13 @@
 import { mkdir, writeFile, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import { captureInputs } from "./inputs.mjs";
-import { createLedger, VERSION, hash } from "./contract.mjs";
+import {
+  createLedger,
+  VERSION,
+  hash,
+  callersFor,
+  assertSnapshot,
+} from "./contract.mjs";
 import { renderHelm } from "./helm.mjs";
 import { extractSpring, resolveProperties } from "./spring.mjs";
 import {
@@ -37,24 +43,7 @@ export async function analyze(
       const helm = renderHelm(captured.root, inputs.config, env, ledger, {
         binary,
       });
-      const extracted = extractSpring(
-        inputs.files,
-        inputs.config.source,
-        env,
-        ledger,
-      );
-      const properties = resolveProperties(
-        inputs.files,
-        env,
-        helm.resources,
-        inputs.config.source,
-        ledger,
-      );
-      const observations = readObservations(
-        env.observations ? inputs.files.get(env.observations) : null,
-        env,
-        ledger,
-      );
+      const parts = [];
       const inputLock = inputs.lockFor(env, {
         helm: helm.version,
         javaParser: "3.0.1",
@@ -62,16 +51,48 @@ export async function analyze(
         rule: "spring-explicit-bean/1",
       });
       inputLock.renderHash = helm.outputHash;
+      for (const { source, env: scope } of callersFor(inputs.config, env)) {
+        const callerLedger = inputs.config.sources
+          ? createLedger(env.id, source.service)
+          : ledger;
+        if (callerLedger !== ledger) {
+          callerLedger.evidence.push(...ledger.evidence);
+          callerLedger.facts.push(...ledger.facts);
+        }
+        const extracted = extractSpring(
+          inputs.files,
+          source,
+          scope,
+          callerLedger,
+        );
+        const properties = resolveProperties(
+          inputs.files,
+          scope,
+          helm.resources,
+          source,
+          callerLedger,
+        );
+        const observations = readObservations(
+          scope.observations ? inputs.files.get(scope.observations) : null,
+          scope,
+          callerLedger,
+        );
+        parts.push(
+          buildSnapshot({
+            env: scope,
+            inputLock,
+            ledger: callerLedger,
+            helm,
+            extracted,
+            properties,
+            observations,
+          }),
+        );
+      }
       snapshots.push(
-        buildSnapshot({
-          env,
-          inputLock,
-          ledger,
-          helm,
-          extracted,
-          properties,
-          observations,
-        }),
+        inputs.config.sources
+          ? composeCallers(parts, inputs.config.sources)
+          : parts[0],
       );
       manifests[env.id] = helm.manifest;
     }
@@ -98,6 +119,58 @@ export async function analyze(
       })),
     })),
   };
+}
+
+// All parts share captured repository bytes and one rendered environment.
+// Keep caller-scoped observations/comparisons separate; never promote partial
+// collection into a complete system-level observation.
+export function composeCallers(parts, sources) {
+  const first = parts[0];
+  if (
+    parts.some(
+      (p) =>
+        p.environment !== first.environment ||
+        hash(p.inputLock) !== hash(first.inputLock),
+    )
+  )
+    throw new Error("Cannot compose different environment or input locks");
+  const unique = (key) => [
+    ...new Map(parts.flatMap((p) => p[key]).map((r) => [r.id, r])).values(),
+  ];
+  const observations = parts.map((p, i) => ({
+    caller: sources[i].service,
+    ...p.observation,
+  }));
+  const snapshot = {
+    ...first,
+    callers: sources.map((s) => s.service),
+    candidates: parts.flatMap((p) => p.candidates),
+    dependencies: parts.flatMap((p) => p.dependencies),
+    evidence: unique("evidence"),
+    facts: unique("facts"),
+    resolutions: unique("resolutions"),
+    resourceComparisons: parts.flatMap((p, i) =>
+      p.resourceComparisons.map((r) => ({ ...r, caller: sources[i].service })),
+    ),
+    observation: {
+      coverage: observations.every((o) => o.coverage === "unavailable")
+        ? "unavailable"
+        : "partial",
+      collectedAt: null,
+      releaseCorrespondence: "unverified",
+      release: null,
+    },
+    observations,
+    coverage: parts.flatMap((p, i) =>
+      p.coverage.map((c) => ({ ...c, caller: sources[i].service })),
+    ),
+    diagnostics: parts.flatMap((p, i) =>
+      p.diagnostics.map((d) => ({ ...d, caller: sources[i].service })),
+    ),
+  };
+  delete snapshot.contentHash;
+  assertSnapshot(snapshot);
+  return { ...snapshot, contentHash: hash(snapshot) };
 }
 
 export async function writeAnalysis(result, out) {
@@ -134,7 +207,7 @@ export async function checkOracle(result, file) {
       s.environment,
       Object.fromEntries(
         s.candidates.map((c) => [
-          c.name,
+          s.callers ? `${c.source}/${c.name}` : c.name,
           {
             eligibility: c.eligibility,
             target: c.target,

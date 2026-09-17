@@ -88,6 +88,7 @@ export function extractSpring(files, source, env, ledger) {
         `unknown-${method.location.startLine}`;
       const id = identify("candidate", {
         environment: env.id,
+        source: source.service,
         file,
         name,
         line: method.location.startLine,
