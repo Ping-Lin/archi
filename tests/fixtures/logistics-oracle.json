@@ -1,0 +1,46 @@
+{
+  "qa": {
+    "routing": {
+      "eligibility": "enabled",
+      "target": "routing-hub",
+      "targetResolution": "unique"
+    },
+    "audit": {
+      "eligibility": "enabled",
+      "target": "audit",
+      "targetResolution": "unique"
+    },
+    "webhook": {
+      "eligibility": "disabled",
+      "target": "webhook",
+      "targetResolution": "unique"
+    },
+    "dynamic": {
+      "eligibility": "unknown",
+      "target": "routing-hub",
+      "targetResolution": "unique"
+    }
+  },
+  "production": {
+    "routing": {
+      "eligibility": "enabled",
+      "target": "routing-hub",
+      "targetResolution": "unique"
+    },
+    "audit": {
+      "eligibility": "disabled",
+      "target": "audit",
+      "targetResolution": "unique"
+    },
+    "webhook": {
+      "eligibility": "enabled",
+      "target": "webhook",
+      "targetResolution": "unique"
+    },
+    "dynamic": {
+      "eligibility": "unknown",
+      "target": "routing-hub",
+      "targetResolution": "unique"
+    }
+  }
+}

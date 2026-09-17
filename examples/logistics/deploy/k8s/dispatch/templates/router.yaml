@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: routing-hub
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app.kubernetes.io/name: routing-hub
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - port: 8080
+      targetPort: 8080

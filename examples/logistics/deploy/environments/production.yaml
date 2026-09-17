@@ -1,0 +1,9 @@
+profile: prod
+application:
+  routing:
+    endpoint: http://routing-hub.logistics-prod.svc.cluster.local:8080
+  webhook:
+    enabled: true
+workloads:
+  dispatcher: {image: "example.invalid/dispatcher:production", replicas: 1}
+  routing-hub: {image: "example.invalid/routing-hub:1", replicas: 1}

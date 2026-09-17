@@ -116,4 +116,28 @@ Deployment comparison currently covers container names/images only. It reports a
 
 `tests/fixtures/analysis-oracle.json` is independently authored. `npm run check:analysis` compares the real pipeline against it. `tests/analysis/pipeline.test.mjs` covers deterministic capture, pinned revisions, environment isolation, unresolved/ambiguous/disabled cases, scope failures, identity, stale/conflicting observations and release uncertainty. CI requires Helm; local integration tests explicitly skip if it is absent, so skips do not represent a completed Helm gate.
 
-`tests/analysis-browser.mjs` exercises evidence navigation, exclusions, production isolation, comparison, resource health, export and mobile layout. The next milestone is onboarding evaluation on unfamiliar synthetic repositories, followed by narrowly scoped internal adapters. The current skill still maintains the v1 simulation; autonomous v2 onboarding has not been implemented or evaluated.
+`tests/analysis-browser.mjs` exercises evidence navigation, exclusions, production isolation, comparison, resource health, export and mobile layout. The skill now routes v1 simulation and v2 analysis onboarding separately. The logistics fixture validates configuration portability across a second layout; this is not a blinded autonomous-onboarding evaluation.
+
+## Phase two: service graph and configuration portability
+
+The Evidence lab opens on **Service graph**. Its view-only projection uses the
+selected snapshot's resolved dependencies, validates their candidate/resolution
+references, and never adds edges from disabled candidates or runtime observations.
+Click or keyboard-activate an edge to inspect its exact candidate and evidence.
+Disabled/unknown candidates remain selectable below the graph without active edges.
+Search filters the view only. Gateway nodes do not imply undiscovered backend routes.
+
+The graph represents the analyzed scope, not an exhaustive repository or cluster
+topology. The current analyzer still has one logical caller per config. External
+targets have a distinct node style; conflicting evidence has a dashed amber edge.
+Generic deterministic source/target positioning replaces fixture-specific coordinates
+for this projection. Layout for large multi-caller graphs remains future work.
+
+Run `npm run analyze:logistics` to analyze the second fixture into the standard
+output and refresh the UI. Restore the checkout fixture with `npm run check:analysis`.
+The second layout changes Java source path, constructor type, logical service,
+chart location, values paths, property keys and environment names. No extractor or
+resolver changes are required. Its dynamic factory deliberately remains unknown.
+`tests/analysis/onboarding.test.mjs` checks a handwritten oracle and AI-free reruns.
+`tests/graph-browser.mjs` checks both fixtures, environment switching, keyboard edge
+selection, exclusions, empty search and mobile containment.

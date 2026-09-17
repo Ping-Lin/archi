@@ -18,7 +18,8 @@
     "test:skill": "node tests/skill-scenario.mjs",
     "analyze": "node scripts/analyze.mjs",
     "test:analysis": "node --test tests/analysis/*.test.mjs",
-    "check:analysis": "node scripts/analyze.mjs --oracle tests/fixtures/analysis-oracle.json"
+    "check:analysis": "node scripts/analyze.mjs --oracle tests/fixtures/analysis-oracle.json",
+    "analyze:logistics": "node scripts/analyze.mjs --config examples/logistics/archi.config.json --oracle tests/fixtures/logistics-oracle.json"
   },
   "dependencies": {
     "ajv": "8.20.0",

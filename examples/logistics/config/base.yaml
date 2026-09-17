@@ -1,0 +1,7 @@
+routing:
+  endpoint: http://unconfigured.example.invalid
+audit:
+  endpoint: https://audit.example.invalid
+webhook:
+  endpoint: https://webhook.example.invalid
+  enabled: false

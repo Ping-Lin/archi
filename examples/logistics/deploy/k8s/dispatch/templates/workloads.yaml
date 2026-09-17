@@ -1,0 +1,33 @@
+{{- range $name, $workload := .Values.workloads }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $.Release.Name }}-{{ $name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+spec:
+  replicas: {{ $workload.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+    spec:
+      containers:
+        - name: app
+          image: {{ $workload.image | quote }}
+          {{- if eq $name "dispatcher" }}
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ $.Values.profile | quote }}
+            - name: SPRING_APPLICATION_JSON
+              value: {{ $.Values.application | toJson | quote }}
+          {{- end }}
+{{- end }}

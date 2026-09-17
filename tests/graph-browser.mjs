@@ -1,0 +1,37 @@
+import {createRequire} from 'node:module';
+import assert from 'node:assert/strict';
+const {chromium}=createRequire(import.meta.url)('playwright');
+const browser=await chromium.launch({headless:true,executablePath:process.env.ARCHI_BROWSER_EXECUTABLE||undefined});
+const logistics=process.env.ARCHI_GRAPH_FIXTURE==='logistics';
+try {
+ const page=await browser.newPage({viewport:{width:1512,height:1100}}),errors=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.goto((process.env.ARCHI_URL??'http://127.0.0.1:4173')+'/?view=analysis');
+ await page.getByRole('tab',{name:'Service graph'}).waitFor();
+ await page.locator('.analyzed-edge').first().waitFor();
+ assert.equal(await page.locator('.analyzed-edge').count(),2);
+ const name=logistics?'audit':'clientB',source=logistics?'dispatcher':'checkout',target=logistics?'audit':'sandbox';
+ const edge=page.getByRole('button',{name:`${source} to ${target} via ${name}`,exact:true});
+ await edge.focus();await page.keyboard.press('Enter');
+ assert.equal(await edge.evaluate(el=>getComputedStyle(el).outlineStyle),'none');
+ await page.getByRole('heading',{name,exact:true}).waitFor();
+ await page.evaluate(()=>window.scrollTo(0,0));
+ await page.screenshot({path:`artifacts/phase-two-${logistics?'logistics-qa':'dev'}-graph.png`,fullPage:true});
+ await page.getByRole('button',{name:`Inspect excluded ${logistics?'dynamic':'legacyClient'}`,exact:true}).click();
+ assert.match(await page.locator('.reason-list').innerText(),logistics?/dynamic|outside/:/No supported explicit/);
+ await page.getByLabel('Analysis environment').selectOption(logistics?'production':'prod');
+ assert.equal(await page.locator('.analyzed-edge').count(),logistics?2:1);
+ assert.equal(await page.getByRole('button',{name:`${source} to ${target} via ${name}`,exact:true}).count(),0);
+ await page.locator('.analyzed-edge').first().click();
+ assert.match(await page.locator('.dimension-grid').innerText(),/unavailable/);
+ await page.evaluate(()=>window.scrollTo(0,0));
+ await page.screenshot({path:`artifacts/phase-two-${logistics?'logistics-production':'prod'}-graph.png`,fullPage:true});
+ await page.getByLabel('Search analyzed relationships').fill('not-present');assert.equal(await page.locator('.analyzed-edge').count(),0);
+ await page.getByText('No resolved connections in this view.',{exact:false}).waitFor();
+ await page.getByLabel('Search analyzed relationships').fill('');
+ await page.setViewportSize({width:390,height:844});
+ await page.evaluate(()=>window.scrollTo(0,0));
+ await page.screenshot({path:`artifacts/phase-two-${logistics?'logistics':'checkout'}-mobile.png`,fullPage:true});
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ assert.deepEqual(errors,[]);console.log(`Service graph browser passed: ${logistics?'logistics':'checkout'}`);
+} finally {await browser.close();}

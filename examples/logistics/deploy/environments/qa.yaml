@@ -1,0 +1,9 @@
+profile: qa
+application:
+  routing:
+    endpoint: http://routing-hub.logistics-qa.svc.cluster.local:8080
+  webhook:
+    enabled: false
+workloads:
+  dispatcher: {image: "example.invalid/dispatcher:qa", replicas: 1}
+  routing-hub: {image: "example.invalid/routing-hub:1", replicas: 1}

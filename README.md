@@ -41,6 +41,10 @@ npm run dev
 
 It reads real Helm output and parsed synthetic Java source, evaluates clients A/B/C
 independently in dev/prod, and exposes the supporting facts, exclusions and unknowns.
+The Service graph visualizes resolved dependencies from the selected environment;
+select a connection or excluded candidate to inspect its evidence. Try the second
+repository layout with `npm run analyze:logistics`, then refresh. Restore checkout
+with `npm run check:analysis`.
 Use `npm run analyze -- --revision HEAD` for immutable Git inputs. This is bounded
 synthetic analysis, not production discovery. See [the v2 analysis contract](docs/model-v2.md).
 

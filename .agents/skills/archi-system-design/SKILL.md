@@ -1,9 +1,14 @@
 ---
 name: archi-system-design
-description: Design or update an Archi system end to end from a project description or repository evidence, maintaining logical services, deployment contexts, Helm fixtures, mock projects and explorer data together. Use for Archi onboarding and system configuration changes.
+description: Configure Archi simulations or onboard a synthetic repository to evidence-based analysis, with reviewed environment mappings and explainable service graphs.
 ---
 
 # Archi system design
+
+Choose the mode before editing. For v2 source/Helm analysis onboarding or service
+graphs, read [references/analysis-onboarding.md](references/analysis-onboarding.md)
+and `docs/model-v2.md`; use the analysis CLI, not the v1 generator. The remaining
+workflow below applies to v1 authored simulation changes.
 
 Use the target Archi repository as the working root. Read `docs/model.md` and
 `config/system.json` first. For a concrete scenario, read

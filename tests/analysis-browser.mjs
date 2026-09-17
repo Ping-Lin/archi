@@ -15,6 +15,7 @@ try {
     (process.env.ARCHI_URL ?? "http://127.0.0.1:4173") + "/?view=analysis",
   );
   await page.getByRole("heading", { name: "Follow the evidence." }).waitFor();
+  await page.getByRole('tab', {name:'Connections & evidence'}).click();
   assert.equal(await page.locator(".candidate-card").count(), 4);
   await page.getByRole("heading", { name: "clientA", exact: true }).waitFor();
   await page.getByText("Rendered target resource", { exact: true }).waitFor();

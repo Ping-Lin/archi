@@ -1,0 +1,90 @@
+{
+  "schemaVersion": "archi/analysis-v2alpha1",
+  "simulation": true,
+  "name": "Logistics · dispatch architecture",
+  "source": {
+    "service": "dispatcher",
+    "files": [
+      "examples/logistics/modules/dispatch/src/main/java/io/demo/Connections.java"
+    ],
+    "clientTypes": [
+      "RemoteClient"
+    ]
+  },
+  "helm": {
+    "chart": "examples/logistics/deploy/k8s/dispatch",
+    "version": "v3.17.3",
+    "kubeVersion": "1.31.0",
+    "apiVersions": []
+  },
+  "environments": [
+    {
+      "id": "qa",
+      "namespace": "logistics-qa",
+      "cluster": "synthetic-qa",
+      "release": "dispatch-qa",
+      "profiles": [
+        "qa"
+      ],
+      "values": [
+        "examples/logistics/deploy/environments/qa.yaml"
+      ],
+      "propertyFiles": [
+        "examples/logistics/config/base.yaml"
+      ],
+      "propertiesComplete": true,
+      "targets": [
+        {
+          "id": "routing-hub",
+          "url": "http://routing-hub.logistics-qa.svc.cluster.local:8080",
+          "kind": "gateway"
+        },
+        {
+          "id": "audit",
+          "url": "https://audit.example.invalid",
+          "kind": "external"
+        },
+        {
+          "id": "webhook",
+          "url": "https://webhook.example.invalid",
+          "kind": "external"
+        }
+      ],
+      "observations": null
+    },
+    {
+      "id": "production",
+      "namespace": "logistics-prod",
+      "cluster": "synthetic-production",
+      "release": "dispatch-production",
+      "profiles": [
+        "prod"
+      ],
+      "values": [
+        "examples/logistics/deploy/environments/production.yaml"
+      ],
+      "propertyFiles": [
+        "examples/logistics/config/base.yaml"
+      ],
+      "propertiesComplete": true,
+      "targets": [
+        {
+          "id": "routing-hub",
+          "url": "http://routing-hub.logistics-prod.svc.cluster.local:8080",
+          "kind": "gateway"
+        },
+        {
+          "id": "audit",
+          "url": "https://audit.example.invalid",
+          "kind": "external"
+        },
+        {
+          "id": "webhook",
+          "url": "https://webhook.example.invalid",
+          "kind": "external"
+        }
+      ],
+      "observations": null
+    }
+  ]
+}
