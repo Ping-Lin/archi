@@ -1,5 +1,7 @@
 # Archi
 
+Next milestone: [accepted analysis contracts and cross-repository composition direction](docs/phase-four-direction.md).
+
 A local architecture workspace connecting **logical services → deployment contexts → evidence**.
 The first version is a complete fictional commerce sandbox: 3 projects, 8 services,
 3 contexts, 24 deployment instances and a reusable configuration skill.

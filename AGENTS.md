@@ -1,5 +1,8 @@
 # Archi project guidance
 
+For the next architecture milestone, read docs/phase-four-direction.md. It records
+the accepted contract/composition direction and supersedes the earlier onboarding-first plan.
+
 Use JavaScript ES modules and Node.js 22+. Keep the frontend in Vue components and
 CSS; do not add a second frontend framework. Core modeling/generation must remain
 usable without the browser or external services.

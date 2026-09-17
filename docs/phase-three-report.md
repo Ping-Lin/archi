@@ -46,6 +46,10 @@ repository/deployment boundary requires a future contract.
 
 ## Limits and next direction
 
+Update, 2026-09-17: Ping accepted [analysis contracts and cross-repository
+composition](phase-four-direction.md) as the next milestone. That decision
+supersedes the onboarding-first sequence below; the limits recorded here remain valid.
+
 This remains a controlled synthetic evaluation of the supported Spring subset.
 It does not prove autonomous onboarding of an unfamiliar repository. One shared
 chart/repository/revision/namespace per environment is the implemented boundary;
