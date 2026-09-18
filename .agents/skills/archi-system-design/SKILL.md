@@ -10,6 +10,13 @@ graphs, read [references/analysis-onboarding.md](references/analysis-onboarding.
 and `docs/model-v2.md`; use the analysis CLI, not the v1 generator. The remaining
 workflow below applies to v1 authored simulation changes.
 
+For Istio/OTel traffic evidence, read `docs/traffic.md`. Prepare the system analysis
+first, then import a scoped capture with `npm run traffic`. Use exported wire-format
+data with explicit coverage and sampling; generated specimens must remain labeled
+synthetic. Confirm the actual metrics/trace backend before designing acquisition.
+Validate identity resolution and evidence separately from static dependencies;
+workload traffic cannot establish a particular source method or deployed commit.
+
 Use the target Archi repository as the working root. Read `docs/model.md` and
 `config/system.json` first. For a concrete scenario, read
 [references/workflow.md](references/workflow.md). Execute the repository's existing

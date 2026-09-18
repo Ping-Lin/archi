@@ -82,7 +82,10 @@ the explorer's analysis directory. The manifest owns revisions, so do not combin
 with legacy `--revision` or `--config`. Reanalyze pinned inputs and compare hashes;
 inspect per-repository provenance, logical service versus instance identity, and
 unresolved/ambiguous endpoints. Use separate manifests for environment-specific
-revision vectors in this version. System-mode runtime observations are unavailable.
+revision vectors in this version. Candidate-level runtime observations remain
+unavailable in system mode. The separate offline Istio/OTLP observation layer is
+documented in `docs/traffic.md`; it reconciles workload relationships without
+changing candidate-specific conclusions.
 
 `npm run fixture:cross-repo -- DESTINATION` creates new disposable repositories
 from maintained synthetic specimens and a complete manifest. It never overwrites

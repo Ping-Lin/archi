@@ -51,6 +51,9 @@ jobs:
           node scripts/cross-repo-fixture.mjs artifacts/cross-repo-ci
           npm run analyze -- --root artifacts/cross-repo-ci --system system.json --oracle ../../tests/fixtures/cross-repo-oracle.json --out ../analysis
           node tests/cross-repo-browser.mjs
+          node scripts/traffic-fixture.mjs artifacts/traffic/bundle.json
+          npm run traffic -- --analysis artifacts/analysis/analysis.json --bundle artifacts/traffic/bundle.json --out artifacts/analysis/analysis.json
+          node tests/traffic-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

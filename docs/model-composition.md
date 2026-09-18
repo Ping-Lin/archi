@@ -113,9 +113,11 @@ Assessment time remains outside semantic hashes.
 This first system manifest uses **one repository revision vector per run**. Use separate
 manifests when QA and production need different revisions of the same repository.
 Automatic CD discovery, per-environment revision overrides, remote acquisition and
-verified release provenance are not implemented. System-mode observation ingestion
-is also deferred: runtime/deployment observations are explicitly unavailable, and
-release correspondence remains unverified. Legacy v2 fixture observations still work.
+verified release provenance are not implemented. System-mode candidate-specific
+runtime/deployment observations remain unavailable, and release correspondence
+remains unverified. The additive [traffic layer](traffic.md) imports offline Istio
+metrics and OTLP traces to reconcile workload relationships separately. Legacy v2
+fixture observations still work.
 
 ## Reproduce
 

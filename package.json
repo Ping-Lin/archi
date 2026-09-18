@@ -21,7 +21,8 @@
     "check:analysis": "node scripts/analyze.mjs --oracle tests/fixtures/analysis-oracle.json",
     "analyze:logistics": "node scripts/analyze.mjs --config examples/logistics/archi.config.json --oracle tests/fixtures/logistics-oracle.json",
     "analyze:system": "node scripts/analyze.mjs --config examples/system/archi.config.json --oracle tests/fixtures/system-oracle.json",
-    "fixture:cross-repo": "node scripts/cross-repo-fixture.mjs"
+    "fixture:cross-repo": "node scripts/cross-repo-fixture.mjs",
+    "traffic": "node scripts/traffic.mjs"
   },
   "dependencies": {
     "ajv": "8.20.0",
