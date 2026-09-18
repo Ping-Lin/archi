@@ -48,6 +48,9 @@ jobs:
           ARCHI_GRAPH_FIXTURE=logistics node tests/graph-browser.mjs
           npm run analyze:system
           node tests/system-browser.mjs
+          node scripts/cross-repo-fixture.mjs artifacts/cross-repo-ci
+          npm run analyze -- --root artifacts/cross-repo-ci --system system.json --oracle ../../tests/fixtures/cross-repo-oracle.json --out ../analysis
+          node tests/cross-repo-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -1,0 +1,3 @@
+profile: qa
+image: example.invalid/api:synthetic
+application: {}

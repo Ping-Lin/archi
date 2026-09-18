@@ -52,6 +52,10 @@ export function projectServiceGraph(snapshot, query = "") {
       kind: kind ?? edges.find((e) => e.target === id)?.targetKind ?? "service",
     }));
   const nodes = [...place(sourceIds, 40, "service"), ...place(targetIds, 440)];
+  for(const node of nodes){
+    const instance=snapshot.instances?.find(i=>i.id===node.id);
+    if(instance){node.instance=instance;node.project=snapshot.services?.find(s=>s.id===instance.service)?.project;}
+  }
   const multi =
     (snapshot.callers?.length ??
       new Set(snapshot.candidates.map((c) => c.source)).size) > 1;
@@ -107,6 +111,9 @@ export function projectServiceGraph(snapshot, query = "") {
     );
   }
   const byId = new Map(nodes.map((n) => [n.id, n]));
+  if(multi && edges.some(e=>byId.get(e.target).y-byId.get(e.source).y>190)){
+    width+=200;nodes.forEach(n=>n.x+=100);
+  }
   for (const edge of edges) {
     const a = byId.get(edge.source),
       b = byId.get(edge.target);
@@ -142,6 +149,11 @@ export function projectServiceGraph(snapshot, query = "") {
           3 * u * t * t * (by - 75) +
           t * t * t * by +
           offset;
+        if(b.y-a.y>190){
+          const lane=ax<width/2?80:width-80;
+          edge.path=`M ${ax} ${ay} C ${ax} ${ay+45}, ${lane} ${ay+45}, ${lane} ${ay+90} L ${lane} ${by-90} C ${lane} ${by-45}, ${bx} ${by-45}, ${bx} ${by}`;
+          edge.labelX=lane;edge.labelY=(ay+by)/2+offset;
+        }
       } else {
         const above = a.x < b.x,
           y = a.y + (above ? -34 : 34),

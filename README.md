@@ -1,6 +1,8 @@
 # Archi
 
-Next milestone: [accepted analysis contracts and cross-repository composition direction](docs/phase-four-direction.md).
+Cross-repository analysis is available through a pinned system manifest:
+[implemented contracts and usage](docs/model-composition.md),
+[phase four findings](docs/phase-four-report.md).
 
 A local architecture workspace connecting **logical services → deployment contexts → evidence**.
 The first version is a complete fictional commerce sandbox: 3 projects, 8 services,

@@ -183,10 +183,10 @@ export function createLedger(environment, caller = null) {
     recordEvidence: (payload) => add(evidence, "evidence", payload),
     fact: (predicate, subject, value, evidenceIds) =>
       add(facts, "fact", { predicate, subject, value, evidenceIds }),
-    resolve: (rule, inputFactIds, outcome, reasons) =>
+    resolve: (rule, inputFactIds, outcome, reasons, version = RULE_VERSION) =>
       add(resolutions, "resolution", {
         rule,
-        version: RULE_VERSION,
+        version,
         inputFactIds,
         outcome,
         reasons,

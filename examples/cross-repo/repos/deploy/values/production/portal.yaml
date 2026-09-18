@@ -1,0 +1,6 @@
+profile: prod
+image: example.invalid/portal:synthetic
+application:
+  downstream.url: http://api.sales-production.svc.cluster.local:8080
+  audit.url: https://audit.example.invalid
+  missing.url: https://unmapped.example.invalid

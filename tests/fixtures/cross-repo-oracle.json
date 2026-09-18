@@ -1,0 +1,76 @@
+{
+  "qa": {
+    "portal/downstream": {
+      "eligibility": "enabled",
+      "target": "orders",
+      "targetResolution": "unique"
+    },
+    "portal/audit": {
+      "eligibility": "enabled",
+      "target": "audit",
+      "targetResolution": "unique"
+    },
+    "portal/missing": {
+      "eligibility": "enabled",
+      "target": null,
+      "targetResolution": "unresolved"
+    },
+    "orders/downstream": {
+      "eligibility": "enabled",
+      "target": "inventory",
+      "targetResolution": "unique"
+    },
+    "inventory/downstream": {
+      "eligibility": "enabled",
+      "target": "warehouse",
+      "targetResolution": "unique"
+    },
+    "inventory/dynamic": {
+      "eligibility": "unknown",
+      "target": "warehouse",
+      "targetResolution": "unique"
+    },
+    "orders-shadow/downstream": {
+      "eligibility": "enabled",
+      "target": "inventory",
+      "targetResolution": "unique"
+    }
+  },
+  "production": {
+    "portal/downstream": {
+      "eligibility": "enabled",
+      "target": "orders",
+      "targetResolution": "unique"
+    },
+    "portal/audit": {
+      "eligibility": "disabled",
+      "target": "audit",
+      "targetResolution": "unique"
+    },
+    "portal/missing": {
+      "eligibility": "enabled",
+      "target": null,
+      "targetResolution": "unresolved"
+    },
+    "orders/downstream": {
+      "eligibility": "enabled",
+      "target": "inventory",
+      "targetResolution": "unique"
+    },
+    "inventory/downstream": {
+      "eligibility": "enabled",
+      "target": "warehouse",
+      "targetResolution": "unique"
+    },
+    "inventory/dynamic": {
+      "eligibility": "unknown",
+      "target": "warehouse",
+      "targetResolution": "unique"
+    },
+    "orders-shadow/downstream": {
+      "eligibility": "enabled",
+      "target": "inventory",
+      "targetResolution": "unique"
+    }
+  }
+}

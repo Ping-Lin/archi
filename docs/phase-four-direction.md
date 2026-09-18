@@ -1,7 +1,9 @@
 # Accepted direction — analysis contracts and cross-repository composition
 
 Date: 2026-09-17
-Status: Direction accepted by Ping; implementation pending.
+Status: Direction accepted by Ping. The first implementation is documented in
+[model-composition.md](model-composition.md); remaining scope is tracked in
+[phase-four-report.md](phase-four-report.md). The original decision follows.
 
 This decision supersedes the onboarding-first sequence in the phase-three report.
 The next milestone is to formalize analysis contracts and system composition,

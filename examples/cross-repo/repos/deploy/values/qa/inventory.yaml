@@ -1,0 +1,6 @@
+profile: qa
+image: example.invalid/inventory:synthetic
+application:
+  downstream.url: https://warehouse.example.invalid
+  audit.url: https://audit.example.invalid
+  missing.url: https://unmapped.example.invalid

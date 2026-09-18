@@ -630,3 +630,7 @@
 .graph-excluded button small { grid-column:1/-1;color:#9a8da5;font-size:10px;line-height:1.6; }
 @media(max-width:1100px) { .analysis-split.graph-split { grid-template-columns:minmax(0,1fr); } .service-map { border-right:0;border-bottom:1px solid var(--line); } }
 @media(max-width:760px) { .service-map { padding:18px 12px; }.analysis-tabs { flex-wrap:wrap;gap:0 16px; } }
+.binding-detail{padding:16px;margin:16px 0;border:1px solid #e5def6;border-radius:12px;background:#faf8ff;font-size:12px;line-height:1.7;overflow-wrap:anywhere}
+.binding-detail p{margin:7px 0}.binding-detail code{font-size:10px}
+.revision-panel{margin:0 0 20px;padding:16px 20px;border:1px solid #e2dcf2;background:#fff;border-radius:12px;font-size:12px;overflow-wrap:anywhere}
+.revision-panel summary{cursor:pointer;font-weight:600;color:#7054bb}.revision-panel p{color:#798399}.revision-panel>div{display:flex;gap:20px;padding:6px 0;flex-wrap:wrap}.revision-panel strong{min-width:85px}.revision-panel code{font-size:11px}

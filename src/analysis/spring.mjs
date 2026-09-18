@@ -273,7 +273,7 @@ export function resolveProperties(files, env, resources, source, ledger) {
     }
   }
   const deployments = resources.filter(
-    (r) => r.kind === "Deployment" && r.service === source.service,
+    (r) => r.kind === "Deployment" && (source.workloadKey ? r.key === source.workloadKey : r.service === source.service),
   );
   if (deployments.length !== 1) {
     complete = false;

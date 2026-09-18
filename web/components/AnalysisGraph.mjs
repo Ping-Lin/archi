@@ -17,7 +17,7 @@ export default {
         <rect :x="edge.labelX-67" :y="edge.labelY-15" width="134" height="30" rx="15"/>
         <text :x="edge.labelX" :y="edge.labelY+4" text-anchor="middle">{{edge.name}} · {{edge.protocol}}</text><title>{{edge.consistency==='conflicting'?'Conflicting evidence — inspect this connection':'Select to inspect supporting evidence'}}</title>
       </g>
-      <g v-for="node in graph.nodes" :key="node.id" class="analyzed-node" :class="node.kind" :transform="'translate('+node.x+','+(node.y-34)+')'"><rect width="180" height="68" rx="12"/><text x="16" y="23" class="node-kind">{{node.kind.toUpperCase()}}</text><text x="16" y="47">{{node.id.length>21?node.id.slice(0,19)+'…':node.id}}</text><title>{{node.id}}</title></g>
+      <g v-for="node in graph.nodes" :key="node.id" class="analyzed-node" :class="node.kind" :transform="'translate('+node.x+','+(node.y-34)+')'"><rect width="180" height="68" rx="12"/><text x="16" y="23" class="node-kind">{{node.project ? node.project.toUpperCase()+' · INSTANCE' : node.kind.toUpperCase()}}</text><text x="16" y="47">{{node.id.length>21?node.id.slice(0,19)+'…':node.id}}</text><title>{{node.id}}{{node.instance ? ' · '+node.instance.service+' · '+node.instance.scope.cluster+'/'+node.instance.scope.namespace : ''}}</title></g>
     </svg></div>
     <p v-if="!graph.edges.length" class="graph-empty">No resolved connections in this view. Missing edges are not proof of no dependency.</p>
     <div class="graph-legend"><span>→ Resolved source/config dependency</span><span>Gateway ≠ inferred backend route</span></div>

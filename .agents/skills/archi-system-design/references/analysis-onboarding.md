@@ -58,7 +58,33 @@ Observation files are caller-scoped; a shared unqualified event file is rejected
 The environment still owns cluster, namespace, release, values and target catalog.
 Use this mode only when one captured Helm render represents that boundary. Multiple
 matching Deployments remain ambiguous. Cross-repository, cross-namespace and
-independent release composition require a future contract, not ID aliases.
+independent release composition use the separate system manifest described below,
+not ID aliases in the shared-render config.
 Candidate expectations use `service/beanName` keys; retain repeated bean names and
 shared Java files as separate caller identities. Run `npm run analyze:system` and
 inspect both the graph and environment comparison for caller isolation.
+
+## Cross-repository system composition
+
+Read `docs/model-composition.md`. Use the strict `archi/system-v1alpha1` manifest
+when source code and deployment configuration span repositories or releases.
+Record repository roots and exact commit SHAs, project ownership, stable logical
+services, distinct deployment instances and release scopes. Bind each instance to
+an exact Deployment and optional Service endpoint; do not merge by name alone.
+
+Select only supported versioned adapters. A different path can be a binding change;
+Kotlin, gRPC or unsupported property semantics require an adapter extension. Report
+that gap rather than inventing dependency lists or claiming config-only onboarding.
+Keep each instance's properties/profile assumptions explicit and reviewed.
+
+Run the existing CLI with `--system MANIFEST --root ROOT`; use `--out` to select
+the explorer's analysis directory. The manifest owns revisions, so do not combine
+with legacy `--revision` or `--config`. Reanalyze pinned inputs and compare hashes;
+inspect per-repository provenance, logical service versus instance identity, and
+unresolved/ambiguous endpoints. Use separate manifests for environment-specific
+revision vectors in this version. System-mode runtime observations are unavailable.
+
+`npm run fixture:cross-repo -- DESTINATION` creates new disposable repositories
+from maintained synthetic specimens and a complete manifest. It never overwrites
+an existing directory. This controlled regression does not establish autonomous
+onboarding accuracy; a separately prepared evaluation remains the next gate.

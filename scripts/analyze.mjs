@@ -2,6 +2,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyze, writeAnalysis, checkOracle } from "../src/analysis/run.mjs";
+import { analyzeSystem } from "../src/analysis/system-run.mjs";
 const args = process.argv.slice(2);
 const allowed = [
   "--root",
@@ -10,6 +11,7 @@ const allowed = [
   "--revision",
   "--at",
   "--oracle",
+  "--system",
 ];
 function option(flag, fallback) {
   const i = args.indexOf(flag);
@@ -31,9 +33,17 @@ try {
       path.join(path.dirname(fileURLToPath(import.meta.url)), ".."),
     ),
   );
-  const result = await analyze(
+  if (option("--system") && (option("--config") || option("--revision")))
+    throw Error(
+      "--system owns its revision vector; do not combine with --config or --revision",
+    );
+  const runner = option("--system") ? analyzeSystem : analyze;
+  const result = await runner(
     root,
-    option("--config", "examples/analysis/archi.config.json"),
+    option(
+      "--system",
+      option("--config", "examples/analysis/archi.config.json"),
+    ),
     {
       revision: option("--revision", null),
       asOf: option("--at", new Date().toISOString()),

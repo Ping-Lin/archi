@@ -1,5 +1,9 @@
 # Analysis contract — archi/analysis-v2alpha1
 
+For the additive cross-repository system manifest and adapter/binding/resolution
+contracts, see [system composition](model-composition.md). The configurations below
+remain supported as the original single-repository mode.
+
 This is the implemented **synthetic vertical slice**, alongside the unchanged [v1 demo contract](model.md). It is not a general Spring analyzer or a production collector. The configuration currently requires `simulation: true`.
 
 ## Run and inspect

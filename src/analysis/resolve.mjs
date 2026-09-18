@@ -95,22 +95,25 @@ export function resolveCandidates(
   resources,
   observations,
   ledger,
+  targetResolver = null,
 ) {
   const candidates = [],
     dependencies = [];
-  const targetEvidence = ledger.recordEvidence({
-    type: "declared_target_catalog",
-    locator: `archi.config/environments/${env.id}/targets`,
-    contentHash: hash(env.targets),
-  });
-  const targetFact = ledger.fact("targets.catalog", env.id, env.targets, [
-    targetEvidence,
-  ]);
+  const targetEvidence = targetResolver
+    ? null
+    : ledger.recordEvidence({
+        type: "declared_target_catalog",
+        locator: `archi.config/environments/${env.id}/targets`,
+        contentHash: hash(env.targets),
+      });
+  const targetFact = targetResolver
+    ? null
+    : ledger.fact("targets.catalog", env.id, env.targets, [targetEvidence]);
   for (const candidate of extracted.candidates) {
     const facts = [
       candidate.factId,
       properties.scopeFact,
-      targetFact,
+      ...(targetFact ? [targetFact] : []),
       ...(properties.chains[candidate.key] ?? []),
     ];
     const reasons = [...candidate.unsupported];
@@ -155,9 +158,16 @@ export function resolveCandidates(
       );
     const value = properties.values[candidate.key] ?? null,
       url = properties.complete ? endpoint(value) : null;
-    const matches = url
-      ? env.targets.filter((t) => endpoint(t.url) === url)
-      : [];
+    const resolvedTarget = targetResolver ? targetResolver(url, ledger) : null;
+    if (resolvedTarget) {
+      facts.push(...resolvedTarget.factIds);
+      reasons.push(...resolvedTarget.reasons);
+    }
+    const matches = resolvedTarget
+      ? resolvedTarget.matches
+      : url
+        ? env.targets.filter((t) => endpoint(t.url) === url)
+        : [];
     let targetResolution =
       matches.length === 1
         ? "unique"
@@ -165,7 +175,7 @@ export function resolveCandidates(
           ? "ambiguous"
           : "unresolved";
     const target = matches.length === 1 ? matches[0] : null;
-    if (target && target.kind !== "external") {
+    if (!targetResolver && target && target.kind !== "external") {
       const parsed = new URL(target.url);
       const port =
         Number(parsed.port) ||
@@ -195,7 +205,7 @@ export function resolveCandidates(
     }
     reasons.push(
       targetResolution === "unique"
-        ? `Endpoint maps to ${target.id} using the reviewed target catalog`
+        ? `Endpoint maps to ${target.id} using the reviewed ${targetResolver ? "deployment binding and rendered resources" : "target catalog"}`
         : targetResolution === "ambiguous"
           ? "Multiple target catalog entries match the endpoint"
           : "Endpoint or supported target mapping is unavailable",
@@ -230,10 +240,13 @@ export function resolveCandidates(
       consistency,
     };
     const resolutionId = ledger.resolve(
-      "explicit-bean-to-endpoint",
+      targetResolver
+        ? "explicit-bean-to-deployment"
+        : "explicit-bean-to-endpoint",
       [...new Set(facts)],
       outcome,
       reasons,
+      targetResolver ? "deployment-endpoint/1" : undefined,
     );
     const resolved = {
       ...candidate,
@@ -344,6 +357,7 @@ export function buildSnapshot({
   extracted,
   properties,
   observations,
+  targetResolver = null,
 }) {
   const { candidates, dependencies } = resolveCandidates(
     extracted,
@@ -352,6 +366,7 @@ export function buildSnapshot({
     helm.resources,
     observations,
     ledger,
+    targetResolver,
   );
   const snapshot = {
     schemaVersion: VERSION,

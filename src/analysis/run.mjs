@@ -8,8 +8,7 @@ import {
   callersFor,
   assertSnapshot,
 } from "./contract.mjs";
-import { renderHelm } from "./helm.mjs";
-import { extractSpring, resolveProperties } from "./spring.mjs";
+import { runAdapter } from "./adapters.mjs";
 import {
   readObservations,
   buildSnapshot,
@@ -30,18 +29,14 @@ export async function analyze(
   try {
     for (const env of inputs.config.environments) {
       const ledger = createLedger(env.id);
-      // Context-sensitive and explicitly nondeterministic Helm functions are outside this contract.
-      for (const file of inputs.chartFiles)
-        if (
-          /\b(lookup|now|randAlphaNum|randAlpha|randNumeric|randAscii|uuidv4|genCA|genSelfSignedCert|genSignedCert)\b/.test(
-            inputs.files.get(file),
-          )
-        )
-          throw new Error(
-            `Unsupported Helm context/random function in ${file}`,
-          );
-      const helm = renderHelm(captured.root, inputs.config, env, ledger, {
+      const helm = runAdapter("helm-template/1", {
+        root: captured.root,
+        config: inputs.config,
+        env,
+        ledger,
         binary,
+        files: inputs.files,
+        chartFiles: inputs.chartFiles,
       });
       const parts = [];
       const inputLock = inputs.lockFor(env, {
@@ -59,19 +54,15 @@ export async function analyze(
           callerLedger.evidence.push(...ledger.evidence);
           callerLedger.facts.push(...ledger.facts);
         }
-        const extracted = extractSpring(
-          inputs.files,
+        const context = {
+          files: inputs.files,
           source,
-          scope,
-          callerLedger,
-        );
-        const properties = resolveProperties(
-          inputs.files,
-          scope,
-          helm.resources,
-          source,
-          callerLedger,
-        );
+          env: scope,
+          ledger: callerLedger,
+          resources: helm.resources,
+        };
+        const extracted = runAdapter("spring-explicit-bean/1", context);
+        const properties = runAdapter("spring-properties/1", context);
         const observations = readObservations(
           scope.observations ? inputs.files.get(scope.observations) : null,
           scope,
