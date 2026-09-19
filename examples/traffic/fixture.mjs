@@ -80,7 +80,8 @@ export function trafficFixture() {
       },
       {
         id: "traces",
-        adapter: "otlp-json/1",
+        adapter: "otlp-json/2",
+        correlationScope: "commerce-qa",
         coverage: "partial",
         sampling: "sampled",
         note: "Synthetic direct client/server pair, not full request coverage.",

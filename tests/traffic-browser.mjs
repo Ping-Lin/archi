@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { hash } from "../src/analysis/contract.mjs";
 const { chromium } = createRequire(import.meta.url)("playwright");
 const browser = await chromium.launch({
   headless: true,
@@ -47,6 +48,14 @@ try {
     exported.snapshot.contentHash,
     exported.traffic.staticContentHash,
   );
+  for (const artifact of [exported.snapshot, exported.traffic]) {
+    const { contentHash, ...body } = artifact;
+    assert.equal(contentHash, hash(body), "export retains verifiable contents");
+  }
+  assert.equal(exported.traffic.resolutionVersion, "traffic-reconciliation/2");
+  const pair = exported.traffic.evidence.find((e) => e.adapter === "otlp-json/2");
+  assert.equal(pair.reference.clientRecords[0].source, "traces");
+  assert.equal(pair.reference.serverRecords[0].source, "traces");
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: "artifacts/phase-five-traffic.png",

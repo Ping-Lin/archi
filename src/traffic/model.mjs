@@ -1,5 +1,14 @@
 import Ajv from "ajv";
 import { hash } from "../analysis/contract.mjs";
+import {
+  insist,
+  boundedJson,
+  validateSnapshot,
+  nanos,
+  timestamp,
+  LIMITS,
+} from "./validation.mjs";
+import { validateOtlp } from "./otlp-schema.mjs";
 
 const text = { type: "string", minLength: 1 };
 const object = (properties) => ({
@@ -15,9 +24,11 @@ export const trafficBundleSchema = object({
   window: object({ start: text, end: text }),
   sources: {
     type: "array",
+    maxItems: LIMITS.sources,
     items: object({
       id: text,
-      adapter: { enum: ["istio-prometheus/1", "otlp-json/1"] },
+      adapter: { enum: ["istio-prometheus/1", "otlp-json/2"] },
+      correlationScope: { type: "string", minLength: 1, maxLength: 128 },
       coverage: { enum: ["available", "partial", "unavailable"] },
       note: text,
       sampling: { enum: ["none", "sampled", "unknown"] },
@@ -25,10 +36,12 @@ export const trafficBundleSchema = object({
     }),
   },
 });
+// Metrics do not require trace scope; OTLP /2 explicitly declares its join boundary.
+trafficBundleSchema.properties.sources.items.required =
+  trafficBundleSchema.properties.sources.items.required.filter(
+    (k) => k !== "correlationScope",
+  );
 const validate = new Ajv({ allErrors: true }).compile(trafficBundleSchema);
-const insist = (condition, message) => {
-  if (!condition) throw Error(`Traffic: ${message}`);
-};
 export function queryFor(seconds) {
   insist(
     Number.isInteger(seconds) && seconds > 0,
@@ -70,10 +83,11 @@ const metricIdentity = (labels, side) => ({
   workload: labels[`${side}_workload`] ?? null,
 });
 function attrs(list = []) {
-  const result = {};
+  insist(Array.isArray(list), "OTLP attributes array required");
+  const result = Object.create(null);
   for (const a of list) {
     insist(
-      typeof a.key === "string" && !Object.hasOwn(result, a.key),
+      a && typeof a.key === "string" && !Object.hasOwn(result, a.key),
       "duplicate or invalid OTLP attribute",
     );
     result[a.key] = a.value?.stringValue ?? a.value?.intValue ?? null;
@@ -89,14 +103,16 @@ function otelIdentity(a) {
 }
 
 export function analyzeTraffic(bundle, snapshot) {
+  boundedJson(bundle);
+  validateSnapshot(snapshot);
   insist(validate(bundle), JSON.stringify(validate.errors));
   insist(bundle.environment === snapshot.environment, "environment mismatch");
   insist(
     Array.isArray(snapshot.instances),
     "requires a system snapshot with instance bindings",
   );
-  const start = Date.parse(bundle.window.start),
-    end = Date.parse(bundle.window.end),
+  const start = timestamp(bundle.window.start),
+    end = timestamp(bundle.window.end),
     seconds = (end - start) / 1000;
   insist(
     /(Z|[+-]\d\d:\d\d)$/.test(bundle.window.start) &&
@@ -119,8 +135,9 @@ export function analyzeTraffic(bundle, snapshot) {
     diagnostics = [],
     evidence = [],
     evidenceById = new Map(),
-    allSpans = new Map(),
+    traceGroups = new Map(),
     inputHash = hash(bundle);
+  let recordCount = 0;
   function add(source, index, from, to, p, measurement, reference) {
     const id = `traffic:${hash([inputHash, source.id, index]).slice(0, 24)}`;
     const record = {
@@ -141,6 +158,12 @@ export function analyzeTraffic(bundle, snapshot) {
     });
   }
   for (const source of bundle.sources) {
+    insist(
+      source.adapter === "otlp-json/2"
+        ? typeof source.correlationScope === "string"
+        : source.correlationScope === undefined,
+      "OTLP /2 requires correlationScope; metrics must omit it",
+    );
     if (source.coverage === "unavailable") {
       insist(
         Object.keys(source.payload).length === 0,
@@ -149,6 +172,10 @@ export function analyzeTraffic(bundle, snapshot) {
       continue;
     }
     if (source.adapter === "istio-prometheus/1") {
+      insist(
+        source.correlationScope === undefined,
+        "correlationScope is only valid for OTLP",
+      );
       const { query, response } = source.payload;
       insist(source.sampling === "none", "metrics sampling must be none");
       insist(
@@ -169,6 +196,8 @@ export function analyzeTraffic(bundle, snapshot) {
         });
       const seen = new Set();
       for (const [index, row] of response.data.result.entries()) {
+        insist(++recordCount <= LIMITS.records, "record limit exceeded");
+        insist(row && typeof row === "object", "metric row object required");
         const l = row.metric,
           value = Number(row.value?.[1]);
         insist(
@@ -197,13 +226,13 @@ export function analyzeTraffic(bundle, snapshot) {
           Array.isArray(row.value) &&
             row.value.length === 2 &&
             typeof row.value[1] === "string" &&
-            row.value[1].trim() !== "" &&
+            /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(row.value[1]) &&
             Number.isFinite(value) &&
             value >= 0,
           "invalid request increase",
         );
         insist(
-          Number(row.value[0]) * 1000 === end,
+          Number.isFinite(row.value[0]) && row.value[0] * 1000 === end,
           "metric timestamp must equal window end",
         );
         const fingerprint = hash(l);
@@ -243,14 +272,36 @@ export function analyzeTraffic(bundle, snapshot) {
       }
     } else {
       insist(
+        typeof source.correlationScope === "string",
+        "OTLP /2 requires correlationScope",
+      );
+      validateOtlp(source.payload);
+      insist(
         Array.isArray(source.payload.resourceSpans),
         "expected OTLP resourceSpans",
       );
-      const spans = new Map();
-      for (const resource of source.payload.resourceSpans) {
+      if (!traceGroups.has(source.correlationScope))
+        traceGroups.set(source.correlationScope, new Map());
+      const spans = traceGroups.get(source.correlationScope);
+      for (const [
+        resourceIndex,
+        resource,
+      ] of source.payload.resourceSpans.entries()) {
+        insist(
+          resource &&
+            typeof resource === "object" &&
+            Array.isArray(resource.scopeSpans),
+          "resource scopeSpans array required",
+        );
         const identity = otelIdentity(attrs(resource.resource?.attributes));
-        for (const scope of resource.scopeSpans ?? [])
-          for (const span of scope.spans ?? []) {
+        for (const [scopeIndex, scope] of resource.scopeSpans.entries()) {
+          insist(
+            scope && Array.isArray(scope.spans),
+            "scope spans array required",
+          );
+          for (const [spanIndex, span] of scope.spans.entries()) {
+            insist(++recordCount <= LIMITS.records, "record limit exceeded");
+            insist(span && typeof span === "object", "span object required");
             insist(
               /^[a-fA-F0-9]{32}$/.test(span.traceId) &&
                 !/^0+$/.test(span.traceId) &&
@@ -275,81 +326,91 @@ export function analyzeTraffic(bundle, snapshot) {
             );
             const traceId = span.traceId.toLowerCase(),
               spanId = span.spanId.toLowerCase();
-            const startNs = BigInt(span.startTimeUnixNano),
-              endNs = BigInt(span.endTimeUnixNano);
+            const startNs = nanos(span.startTimeUnixNano),
+              endNs = nanos(span.endTimeUnixNano);
             insist(endNs >= startNs, "negative span duration");
             const record = {
               ...span,
               traceId,
               spanId,
-              parentSpanId: span.parentSpanId?.toLowerCase(),
+              parentSpanId: span.parentSpanId?.toLowerCase() ?? "",
               identity,
             };
             const id = `${traceId}/${spanId}`;
-            if (allSpans.has(id))
-              insist(
-                hash(allSpans.get(id)) === hash(record),
-                "conflicting duplicate span across sources",
-              );
-            allSpans.set(id, record);
+            const location = {
+              source: source.id,
+              resourceIndex,
+              scopeIndex,
+              spanIndex,
+            };
             if (spans.has(id))
               insist(
-                hash(spans.get(id)) === hash(record),
+                hash(spans.get(id).record) === hash(record),
                 "conflicting duplicate span",
               );
-            spans.set(id, record);
+            else spans.set(id, { record, source, locations: [] });
+            spans.get(id).locations.push(location);
           }
-      }
-      for (const span of spans.values()) {
-        if (span.kind !== 2) continue; // OTLP numeric SERVER; only direct CLIENT -> SERVER pairs.
-        const at = BigInt(span.startTimeUnixNano);
-        if (at < BigInt(start) * 1000000n || at >= BigInt(end) * 1000000n)
-          continue;
-        const parent = spans.get(`${span.traceId}/${span.parentSpanId}`);
-        if (parent?.kind !== 3) {
-          diagnostics.push({
-            source: source.id,
-            code: "unpaired-server-span",
-            traceId: span.traceId,
-            spanId: span.spanId,
-          });
-          continue;
         }
-        const a = attrs(span.attributes),
-          p =
-            a["rpc.system"] === "grpc" || a["rpc.system.name"] === "grpc"
-              ? "gRPC"
-              : a["http.request.method"] || a["http.method"]
-                ? "HTTP"
-                : null;
-        if (!p) {
-          diagnostics.push({
-            source: source.id,
-            code: "unsupported-span-protocol",
-            spanId: span.spanId,
-          });
-          continue;
-        }
-        add(
-          source,
-          `${span.traceId}/${span.spanId}`,
-          parent.identity,
-          span.identity,
-          p,
-          {
-            kind: "trace",
-            durationMs: Number(BigInt(span.endTimeUnixNano) - at) / 1e6,
-          },
-          {
-            traceId: span.traceId,
-            clientSpanId: parent.spanId,
-            serverSpanId: span.spanId,
-          },
-        );
       }
     }
   }
-  const edges = new Map();
+  for (const [correlationScope, spans] of traceGroups) {
+    for (const entry of spans.values()) {
+      const { record: span, source } = entry;
+      if (span.kind !== 2) continue; // OTLP numeric SERVER; only direct CLIENT -> SERVER pairs.
+      const at = BigInt(span.startTimeUnixNano);
+      if (at < BigInt(start) * 1000000n || at >= BigInt(end) * 1000000n)
+        continue;
+      const parentEntry = spans.get(`${span.traceId}/${span.parentSpanId}`),
+        parent = parentEntry?.record;
+      if (parent?.kind !== 3) {
+        diagnostics.push({
+          source: source.id,
+          code: "unpaired-server-span",
+          traceId: span.traceId,
+          spanId: span.spanId,
+        });
+        continue;
+      }
+      const a = attrs(span.attributes),
+        p =
+          a["rpc.system"] === "grpc" || a["rpc.system.name"] === "grpc"
+            ? "gRPC"
+            : a["http.request.method"] || a["http.method"]
+              ? "HTTP"
+              : null;
+      if (!p) {
+        diagnostics.push({
+          source: source.id,
+          code: "unsupported-span-protocol",
+          spanId: span.spanId,
+        });
+        continue;
+      }
+      add(
+        source,
+        `${span.traceId}/${span.spanId}`,
+        parent.identity,
+        span.identity,
+        p,
+        {
+          kind: "trace",
+          durationMs: Number(BigInt(span.endTimeUnixNano) - at) / 1e6,
+        },
+        {
+          traceId: span.traceId,
+          clientSpanId: parent.spanId,
+          serverSpanId: span.spanId,
+          correlationScope,
+          clientRecords: parentEntry.locations,
+          serverRecords: entry.locations,
+        },
+      );
+    }
+  }
+  const edges = new Map(),
+    sampleIds = new Set();
   const ensure = (from, to, p) => {
     const id = key(from, to, p);
     if (!edges.has(id))
@@ -376,15 +437,22 @@ export function analyzeTraffic(bundle, snapshot) {
     edge.evidenceIds.push(o.evidenceId);
     if (m.kind === "requests") {
       edge.requestCount = (edge.requestCount ?? 0) + m.count;
+      insist(Number.isFinite(edge.requestCount), "request total overflow");
       edge.errorCount = (edge.errorCount ?? 0) + (m.errors ?? 0);
       if (m.errors === null) edge.unknownStatusCount += m.count;
       edge.observed ||= m.count > 0;
     } else {
       // Same span exported through multiple sources must not inflate sample count.
       const ref = evidenceById.get(o.evidenceId).reference;
-      const id = `${ref.traceId}/${ref.serverSpanId}`;
-      if (!edge.traceSamples.some((s) => s.id === id))
+      const id = JSON.stringify([
+        ref.correlationScope,
+        ref.traceId,
+        ref.serverSpanId,
+      ]);
+      if (!sampleIds.has(id)) {
         edge.traceSamples.push({ id, durationMs: m.durationMs });
+        sampleIds.add(id);
+      }
       edge.observed = true;
     }
   }
@@ -415,7 +483,8 @@ export function analyzeTraffic(bundle, snapshot) {
     environment: bundle.environment,
     simulation: bundle.simulation,
     window: bundle.window,
-    staticContentHash: snapshot.contentHash ?? hash(snapshot),
+    staticContentHash: snapshot.contentHash,
+    resolutionVersion: "traffic-reconciliation/2",
     inputHash,
     releaseCorrespondence: "unverified",
     identityRule: "cluster-namespace-deployment-name/1",

@@ -75,3 +75,7 @@ p95/p99, HTTP/TLS equivalence, async messaging, external-peer identity, gateway
 route inference, full trace waterfalls, historical storage and dense traffic graphs.
 Observed-only relationships currently appear in the table, not as invented static
 graph edges. These limitations are also visible in the contract and capture UI.
+
+Follow-up: the [2026-09-19 production-readiness hardening review](production-readiness.md)
+records fixes for cross-export pairing, snapshot integrity, timestamp bounds,
+safe offline imports and dependency advisories, plus remaining production gates.

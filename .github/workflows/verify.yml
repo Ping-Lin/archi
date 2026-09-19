@@ -17,6 +17,7 @@ jobs:
         with:
           version: v3.17.3
       - run: npm ci --ignore-scripts
+      - run: npm audit --omit=dev --audit-level=moderate
       - run: npm run verify
       - run: npm run check:helm
       - run: npm run check:analysis

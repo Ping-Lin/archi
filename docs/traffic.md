@@ -7,7 +7,7 @@ Collector receiver, cluster watcher or traffic generator is connected by this sl
 
 `src/traffic/model.mjs` exports the strict `trafficBundleSchema`, `queryFor(seconds)`
 and pure `analyzeTraffic(bundle, snapshot)`. Built-ins are `istio-prometheus/1` and
-`otlp-json/1`. The existing system manifest and static snapshot remain unchanged.
+`otlp-json/2`. The existing system manifest and static snapshot remain unchanged.
 The CLI adds `analysis.traffic[environment]`, replacing only that environment's
 previous capture. It preserves other environments and writes the output atomically.
 This is one window per environment, not a historical database.
@@ -56,7 +56,21 @@ uncovered; capability discovery must report that limitation.
 Supply `payload: {resourceSpans: [...]}` in OTLP JSON export-request form, including
 resource attributes and scopeSpans. This is not Jaeger/Tempo query-response JSON;
 backend-specific acquisition/conversion remains future work. OTLP numeric span
-kinds, hex IDs and decimal nanosecond timestamps are required.
+kinds, hex IDs and decimal-string uint64 nanosecond timestamps are required.
+Nested resources, scopes, spans and attribute value types are validated before use.
+
+Every OTLP source must explicitly declare `correlationScope`, including unavailable
+sources. Use the same value only for exports belonging to the same trusted trace-ID
+domain (for example, one backend tenant). All sources in that scope are indexed
+before parent/child matching; clients and servers may arrive in separate exports.
+Different scopes never join or deduplicate each other's spans. A scope is a caller
+assertion, **not authentication or tenant isolation**. Do not combine untrusted
+tenants into a single report; snapshot identity has no tenant dimension.
+
+Migration: change the source adapter from `otlp-json/1` to `otlp-json/2` and add
+`correlationScope: "commerce-qa"` (choose your actual trace domain). Version 1 is
+rejected, rather than silently adopting cross-export joins. Metrics remain version 1
+and must not declare a correlation scope. Reports record `traffic-reconciliation/2`.
 
 Only direct CLIENT (3) to SERVER (2) pairs with equal trace ID and exact parent-span
 correspondence produce observations. HTTP method attributes (current or legacy) or
@@ -67,7 +81,9 @@ remote peers and full waterfall reconstruction are outside this version.
 
 Include server spans whose start is within `[start,end)`; their parent may begin
 earlier. Identical duplicate spans are deduplicated; conflicting copies fail import.
-Repeated exports across sources do not inflate trace sample counts. Server duration
+Repeated exports within a scope do not inflate trace sample counts. Pair evidence
+retains both client and server source IDs and resource/scope/span indices, including
+duplicate record locations. Server duration
 is displayed as an individual sample, never p95 or complete population latency.
 Sample counts are never added to metric counts or extrapolated into RPS.
 
@@ -132,6 +148,47 @@ until imported separately. The UI displays the absolute capture window and never
 labels it live. Export with traffic uses an `archi/inspection-v1alpha1` envelope
 containing the unchanged `snapshot` and its `traffic` report, preserving each hash's
 boundary. Export without traffic retains the existing snapshot-only format.
+
+## Import safety and operating contract
+
+The importer verifies canonical SHA-256 `contentHash` values on every static
+snapshot and every existing traffic report, checks environment correspondence and
+validates the static evidence ledger before adding a capture. Missing/stale hashes
+fail closed; regenerate analysis instead of manually changing its hash. Hashes
+detect content mismatch, not a malicious producer that can recompute them.
+
+Window timestamps must be valid UTC ISO strings, with optional 1–3 fractional
+digits, for example `2026-09-18T10:00:00.000Z`. Nanosecond timestamps must be
+canonical decimal strings in `[0, 18446744073709551615]`; numeric JSON values,
+overflow and negative durations are rejected. Metrics accept finite nonnegative
+decimal/scientific strings; timestamps must be numeric and match the window end.
+Accumulated request totals may not overflow.
+
+Limits per import: 32 MiB per input/output file, 32 sources, 50,000 total metric
+rows/spans, JSON depth 64 and 500,000 JSON values per validated document. These are
+safety ceilings, not a throughput guarantee. The pure in-memory API enforces the
+structural/record limits; the CLI additionally enforces byte limits.
+
+Use Node 22+ on Linux/POSIX with a trusted, locally owned directory and filesystem
+supporting exclusive creation, atomic rename and directory fsync. Final input/output
+symlinks, hardlinked files and nonregular files are rejected. An existing output
+must be the analysis input itself; other output paths must be new. Successful
+outputs use owner-only permissions (0600); explicitly grant a separate UI reader
+access where needed. Do not expose raw artifacts via a public static server.
+
+The importer creates `<output>.lock` exclusively before reading, writes and fsyncs
+a unique temporary file, then renames and fsyncs the directory. It checks that the
+analysis input has not changed before committing. Validation failures preserve the
+original output. A post-rename durability failure explicitly reports that the new
+output is already installed. Crashes can leave a lock or temporary file: confirm
+the recorded owner process has stopped before manual recovery; never auto-delete
+locks solely based on age. The lock serializes cooperating traffic importers only.
+Do not run analysis generation or unrelated writers against the same output during
+import. This is not a transaction protocol for hostile directories, NFS or multiple
+hosts; use a job queue/object-store generation preconditions for such deployments.
+
+See [production-readiness acceptance](production-readiness.md) for completed fixes
+and remaining release gates. Offline validation is not production deployment approval.
 
 ## Next integration decisions
 
