@@ -217,7 +217,7 @@ export async function analyzeSystem(
   return {
     schemaVersion: VERSION,
     name: manifest.name,
-    simulation: true,
+    simulation: manifest.simulation,
     run: {
       assessedAt: asOf,
       inputMode: "git-revision-vector",

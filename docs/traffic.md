@@ -17,8 +17,9 @@ window `{start,end}` and sources. A source owns ID, adapter, declared coverage
 (`available`, `partial`, `unavailable`), sampling (`none`, `sampled`, `unknown`), a
 human-readable note and an inline payload. Unavailable sources require empty payloads.
 Coverage describes supplied data; Archi does not certify instrumentation coverage.
-The import CLI rejects mixed synthetic/real artifacts. Current system analysis is
-synthetic-only, so this does not yet enable an end-to-end production workflow.
+The import CLI rejects mixed synthetic/real artifacts. System analysis accepts an
+explicit real-input mode; fixtures remain synthetic. See [runtime enrichment](runtime-enrichment.md)
+for the reviewed real-baseline boundary. Real metrics/trace acquisition remains future work.
 
 Each report locks the bundle, source payloads and static snapshot by hash. Evidence
 identifiers include the input hash, source ID and record location. Metrics retain

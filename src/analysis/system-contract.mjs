@@ -35,7 +35,7 @@ export const bindingSchema = object({
 });
 export const systemSchema = object({
   schemaVersion: { const: SYSTEM_VERSION },
-  simulation: { const: true },
+  simulation: { type: "boolean" },
   name: text,
   repositories: {
     ...list(

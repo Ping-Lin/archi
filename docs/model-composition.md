@@ -1,6 +1,6 @@
 # System composition — archi/system-v1alpha1
 
-Status: implemented synthetic scope. This extends the existing analysis pipeline;
+Status: implemented pinned-input scope, with maintained synthetic fixtures. This extends the existing analysis pipeline;
 the original v2 single-repository configurations and their CLI remain supported.
 
 ## Responsibilities
@@ -26,7 +26,7 @@ provides a complete validated example with real commit SHAs.
 
 | Field | Meaning |
 | --- | --- |
-| `schemaVersion`, `simulation`, `name` | Requires `archi/system-v1alpha1` and `simulation: true` |
+| `schemaVersion`, `simulation`, `name` | Requires `archi/system-v1alpha1` and an explicit boolean simulation flag; fixtures use true, real source baselines use false |
 | `repositories[]` | Unique `id`, local `path` relative to CLI root, full 40-character commit `revision` |
 | `projects[]` | Ownership ID and display name |
 | `services[]` | Logical service ID, project ID, source adapter, repository-qualified files and client types |
@@ -118,6 +118,13 @@ runtime/deployment observations remain unavailable, and release correspondence
 remains unverified. The additive [traffic layer](traffic.md) imports offline Istio
 metrics and OTLP traces to reconcile workload relationships separately. Legacy v2
 fixture observations still work.
+
+The additive [runtime inventory layer](runtime-enrichment.md) reconciles scoped
+Deployment/ReplicaSet/Pod captures separately. System-mode real baselines now accept
+`simulation: false`; the flag participates in input locks and cannot be mixed with
+synthetic captures. This enables a reviewed real-input path, not broader parser
+coverage or verified production provenance. Historical synthetic-only descriptions
+in earlier phase reports apply to their original milestones.
 
 ## Reproduce
 

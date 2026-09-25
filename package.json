@@ -22,7 +22,9 @@
     "analyze:logistics": "node scripts/analyze.mjs --config examples/logistics/archi.config.json --oracle tests/fixtures/logistics-oracle.json",
     "analyze:system": "node scripts/analyze.mjs --config examples/system/archi.config.json --oracle tests/fixtures/system-oracle.json",
     "fixture:cross-repo": "node scripts/cross-repo-fixture.mjs",
-    "traffic": "node scripts/traffic.mjs"
+    "traffic": "node scripts/traffic.mjs",
+    "runtime": "node scripts/runtime.mjs",
+    "runtime:capture": "node scripts/runtime-capture.mjs"
   },
   "overrides": {
     "lodash": "4.18.1",

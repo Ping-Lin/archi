@@ -2,6 +2,12 @@
 
 ## Decision
 
+2026-09-24 follow-up: [runtime enrichment](runtime-enrichment.md) adds independent
+Deployment inventory, an explicit real system-input mode and a bounded read-only
+kubectl collector. Synthetic and injected-reader tests do not replace real-cluster
+acceptance. The deployment decision below remains unchanged; the original findings
+and release-gate table record the 2026-09-19 assessment.
+
 **Not approved for production deployment yet.** The reviewed offline traffic slice
 is hardened below. Archi still needs real-backend acceptance and an operating
 security model. No PR, merge, cluster mutation or production telemetry acquisition

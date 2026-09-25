@@ -4,6 +4,12 @@ Cross-repository analysis is available through a pinned system manifest:
 [implemented contracts and usage](docs/model-composition.md),
 [phase four findings](docs/phase-four-report.md).
 
+Deployment runtime enrichment compares the selected repository render, captured
+workload spec and observed Pods without changing static topology. See
+[runtime setup and QA](docs/runtime-enrichment.md) for the synthetic walkthrough,
+read-only collector, scope/identity rules and remaining live-cluster acceptance.
+The independent [traffic layer](docs/traffic.md) retains Istio/OTLP observations.
+
 A local architecture workspace connecting **logical services → deployment contexts → evidence**.
 The first version is a complete fictional commerce sandbox: 3 projects, 8 services,
 3 contexts, 24 deployment instances and a reusable configuration skill.

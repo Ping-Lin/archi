@@ -104,6 +104,14 @@ test("capture rejects a non-root repository and missing pinned files", async () 
     /Missing or unsupported Git input/,
   );
 });
+test("system input mode is explicit and participates in capture hashes", {skip:!available}, async()=>{
+  // Contract regression only: these source specimens remain synthetic test data.
+  const changed=await altered(m=>{m.simulation=false;});
+  assert.equal(changed.simulation,false);
+  assert.notEqual(changed.snapshots[0].contentHash,baseline.snapshots[0].contentHash);
+  assert.notEqual(changed.snapshots[0].inputLock.manifestHash,baseline.snapshots[0].inputLock.manifestHash);
+  assert.deepEqual(changed.snapshots[0].dependencies.map(d=>[d.source,d.target,d.protocol]),baseline.snapshots[0].dependencies.map(d=>[d.source,d.target,d.protocol]));
+});
 test(
   "independent repositories match the handwritten oracle and keep same-name instances distinct",
   { skip: !available },

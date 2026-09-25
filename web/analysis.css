@@ -637,3 +637,22 @@
 .traffic-panel{min-width:0;padding-bottom:20px}.traffic-window{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;padding:16px 24px;background:#f5f0ff;color:#6845a8;font-size:12px}.traffic-panel .coverage-grid{padding:20px 24px}.traffic-select{border:0;background:transparent;color:#704eb2;font:inherit;font-weight:600;cursor:pointer;text-align:left;padding:4px 0}.traffic-select:focus-visible{outline:2px solid #704eb2;outline-offset:4px}.traffic-caveat{padding:0 24px;font-size:12px;color:#718096;line-height:1.8;overflow-wrap:anywhere}.traffic-evidence{margin:16px 24px;padding:16px;border:1px solid #e5def6;border-radius:12px;overflow-wrap:anywhere;font-size:12px}.traffic-evidence summary{cursor:pointer;font-weight:600}.traffic-evidence pre{white-space:pre-wrap;overflow-wrap:anywhere;color:#5e5378}.traffic-table{min-width:850px}.traffic-panel .analysis-table-wrap{overflow-x:auto}
 .analyzed-edge.observed:not(.conflicting) .edge-line{stroke:#219879}.analyzed-edge.observed:not(.conflicting) rect{stroke:#219879;fill:#effaf6}.traffic-graph-note{font-size:11px;line-height:1.7;color:#52736b;padding:8px 0}
 .traffic-panel>.inventory-intro{padding:24px}.traffic-evidence details{padding:10px 0;border-bottom:1px solid #eeeaf5}.traffic-evidence details:last-child{border-bottom:0}
+/* Runtime capture overlay: independent of the static graph geometry. */
+.runtime-panel { padding-bottom:24px; }
+.runtime-panel>.inventory-intro { padding:24px; }
+.runtime-captures { display:grid; gap:12px; padding:0 24px 20px; }
+.runtime-captures>div { padding:14px 18px; border:1px solid #e0dfec; border-radius:12px; background:#faf9fd; }
+.runtime-captures span,.runtime-captures small { display:block; margin-top:5px; color:#687089; overflow-wrap:anywhere; }
+.runtime-table { min-width:880px; }
+.runtime-select { border:0; padding:4px 0; background:none; color:#6546a0; font:inherit; font-weight:700; cursor:pointer; text-decoration:underline; text-underline-offset:4px; }
+.runtime-detail { margin:24px; padding:24px; background:#faf9fd; border:1px solid #e0dfec; border-radius:16px; overflow-wrap:anywhere; }
+.runtime-three { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.runtime-three>div { padding:16px; background:white; border-radius:10px; border:1px solid #e0dfec; }
+.runtime-three code,.runtime-three small { display:block; margin:8px 0; overflow-wrap:anywhere; }
+.runtime-detail pre { white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+.runtime-three article { border-top:1px solid #e0dfec; padding:12px 0; }
+.runtime-badge { cursor:pointer; }
+.analyzed-node .runtime-badge rect { fill:#eee8fa; stroke:#b9a4dd; }
+.analyzed-node .runtime-badge text { font-size:10px; fill:#533a79; }
+.runtime-badge:focus rect { stroke:#5130af; stroke-width:3; }
+@media(max-width:900px) { .runtime-three { grid-template-columns:1fr; } .runtime-detail { margin:12px; padding:16px; } }

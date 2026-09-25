@@ -114,6 +114,42 @@ export function validateAnalysis(analysis) {
     insist(!environments.has(s.environment), "duplicate snapshot environment");
     environments.set(s.environment, s);
   }
+  if (analysis.runtime !== undefined) {
+    insist(
+      analysis.runtime &&
+        typeof analysis.runtime === "object" &&
+        !Array.isArray(analysis.runtime),
+      "invalid runtime map",
+    );
+    for (const [env, report] of Object.entries(analysis.runtime)) {
+      verifyHash(report, "runtime report");
+      insist(
+        report.schemaVersion === "archi/runtime-overlay-v1alpha1" &&
+          report.environment === env &&
+          report.simulation === analysis.simulation &&
+          report.staticContentHash === environments.get(env)?.contentHash &&
+          Array.isArray(report.reports) &&
+          report.reports.length > 0,
+        "runtime report snapshot correspondence mismatch",
+      );
+      const clusters = new Set();
+      for (const child of report.reports) {
+        verifyHash(child, "cluster runtime report");
+        insist(
+          child.schemaVersion === "archi/runtime-report-v1alpha1" &&
+            child.environment === env &&
+            child.staticContentHash === report.staticContentHash &&
+            child.simulation === report.simulation &&
+            typeof child.cluster === "string" &&
+            !clusters.has(child.cluster) &&
+            Array.isArray(child.findings) &&
+            Array.isArray(child.evidence),
+          "invalid cluster runtime report",
+        );
+        clusters.add(child.cluster);
+      }
+    }
+  }
   if (analysis.traffic !== undefined) {
     insist(
       analysis.traffic !== null &&
