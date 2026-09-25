@@ -2,6 +2,9 @@ import { createRequire } from "node:module";
 import { readFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { hash } from "../src/analysis/contract.mjs";
+import { runtimeFixture, CAPTURE_AT } from "../examples/runtime/fixture.mjs";
+import { reconcileRuntime } from "../src/runtime/reconcile.mjs";
+import { seal } from "../src/runtime/contract.mjs";
 const { chromium } = createRequire(import.meta.url)("playwright");
 const browser = await chromium.launch({
   headless: true,
@@ -37,6 +40,9 @@ try {
   assert.match(await detail.innerText(), /example.invalid\/orders:previous/);
   assert.match(await detail.innerText(), /example.invalid\/orders:older/);
   assert.match(await detail.innerText(), /Observed Pods contain multiple image versions/);
+  assert.match(await detail.innerText(), /Assessment at capture: information/);
+  assert.match(await detail.innerText(), /Consistency: no-discrepancy-detected/);
+  assert.match(await detail.innerText(), /Version differences alone are informational/);
   const row = (name) =>
     page
       .locator(".runtime-table tr")
@@ -89,6 +95,20 @@ try {
     path: "artifacts/runtime-mobile.png",
     fullPage: true,
   });
+  const analysis = JSON.parse(await readFile("artifacts/analysis/analysis.json", "utf8"));
+  const capture = runtimeFixture();
+  capture.collections.find((c) => c.kind === "Deployment" && c.namespace === "sales-qa")
+    .resources[0].conditions = [{ type: "Progressing", status: "False", reason: "ProgressDeadlineExceeded" }];
+  const report = reconcileRuntime(output.snapshot, seal(capture), { assessedAt: CAPTURE_AT });
+  analysis.runtime.qa = seal({ ...analysis.runtime.qa, reports: [report] });
+  await page.route("**/analysis.json", (route) => route.fulfill({ json: analysis }));
+  await page.reload();
+  await page.getByRole("button", { name: "Inspect runtime orders", exact: true }).click();
+  await page.getByRole("heading", { name: "orders", exact: true }).waitFor();
+  assert.match(await detail.innerText(), /Assessment at capture: reported-failure/);
+  assert.match(await detail.innerText(), /Controller-reported failure at capture: Progressing=False/);
+  assert.match(await detail.innerText(), /ProgressDeadlineExceeded/);
+  assert.match(await row("orders").innerText(), /reported-failure/);
   assert.deepEqual(errors, []);
   console.log(
     "Runtime browser passed: graph badge, three states, coverage, export hashes, environment isolation and mobile",

@@ -75,7 +75,9 @@ test("three-state comparison keeps rollout, reference difference and availabilit
   assert.equal(f.specAlignment, "different");
   assert.equal(f.rollout, "progressing");
   assert.equal(f.availability, "available");
-  assert.equal(f.pods.length, 2);
+  assert.equal(f.pods.length, 3);
+  assert.equal(f.classification, "information");
+  assert.equal(f.consistency.status, "no-discrepancy-detected");
   assert.ok(f.reasonCodes.includes("mixed-pod-image-references"));
   assert.equal(finding(report, "portal").specAlignment, "matching");
   assert.equal(finding(report, "portal").imageIdentity, "unverified");
@@ -140,7 +142,7 @@ test("ownership uses UID and kind, never names or labels", () => {
   assert.equal(finding(run(c), "orders").pods.length, 0);
   const r = runtimeFixture();
   collection(r, "Pod").resources[0].owners[0].kind = "Deployment";
-  assert.equal(finding(run(r), "orders").pods.length, 1);
+  assert.equal(finding(run(r), "orders").pods.length, 2);
 });
 test("unbound inventory stays separate from static architecture", () => {
   const c = runtimeFixture();

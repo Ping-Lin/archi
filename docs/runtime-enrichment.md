@@ -26,7 +26,7 @@ flowchart TD
 | --- | --- |
 | `src/runtime/contract.mjs` | Strict normalized capture schema, limits, hash and semantic validation; allowlisted Kubernetes projection |
 | `src/runtime/collect.mjs` | Explicit namespace/context lists through kubectl; bounded pagination and sanitized partial failures |
-| `src/runtime/reconcile.mjs` | `deployment-runtime/1`, independent status dimensions and evidence references |
+| `src/runtime/reconcile.mjs` | `deployment-runtime/2`, independent status dimensions and evidence references |
 | `src/runtime/import.mjs` | Attach one cluster report without replacing other clusters, environments, static snapshots or traffic |
 | `src/observations/file.mjs` | Shared locked atomic analysis update used by traffic and runtime importers |
 | `src/observations/create.mjs` | Exclusive, atomically installed owner-only capture files |
@@ -74,6 +74,9 @@ outside this first comparison. Regular sidecars remain distinct named containers
 | `freshness` | fresh / stale / unknown at an explicit assessment time |
 | `acquisition` | complete / partial / failed for relevant resource collections |
 | `podCoverage` | completeness of ReplicaSet and Pod lists, not proven ownership of every Pod |
+| `classification` | information / needs-verification / reported-failure, always at capture |
+| `consistency` | bounded count checks; unknown / no-discrepancy-detected / needs-verification |
+| `reportedFailures` | explicit current-generation Deployment conditions with original reason and evidence ID |
 
 Presence is absent only after a complete unfiltered Deployment list. A failed or
 uncollected namespace never proves absence. UID and controller owner references
@@ -89,6 +92,29 @@ available counts, and no reported failed Progressing condition. Mixed Pod refere
 and spec differences are reported separately. Collection is not atomic across kinds;
 controller status and Pod observations can describe different moments. Availability
 is not an end-to-end application health claim.
+
+Version differences, mixed Pod versions, rollback and independently timed CD are
+informational. They never establish an error. A current-generation, non-terminating
+Deployment qualifies as `reported-failure` only with `Progressing=False` and
+`reason=ProgressDeadlineExceeded`, or `ReplicaFailure=True`. Other conditions remain
+in the capture; no Helm root cause is inferred. A reported failure can coexist with
+available old replicas. A stale report describes a historical failure, not a current one.
+
+With complete lists and an observed, non-terminating Deployment generation, compare
+reported total replicas with linked non-terminating Pods. Also compare each observed,
+non-terminating ReplicaSet's total with its owned non-terminating Pods. Missing counts
+are skipped. Each check retains collection/object evidence IDs. Discrepancies mean
+`needs-verification`, because resource lists and controllers are asynchronous; they
+do not prove deployment failure. Incomplete collections leave consistency unknown.
+`no-discrepancy-detected` applies only to the executed count checks, not authenticity,
+readiness, image identity, orphan resources or complete cluster correctness.
+
+Version 2 adds these fields without changing capture format. Reimport a retained
+capture to recompute under the new rule. Older reports retain their original hashes;
+the UI shows their new assessment fields as not assessed.
+
+See [CD scenarios and review](runtime-consistency-review.md) for the T0–T6 oracle,
+review findings and manual deployment acceptance boundary.
 
 Freshness conservatively starts at collection start. Future-dated captures are
 unknown. Reports are deterministic for the same static snapshot, capture, assessment

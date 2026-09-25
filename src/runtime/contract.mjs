@@ -9,7 +9,7 @@ import {
 } from "../traffic/validation.mjs";
 
 export const CAPTURE_VERSION = "archi/runtime-capture-v1alpha1";
-export const RULE_VERSION = "deployment-runtime/1";
+export const RULE_VERSION = "deployment-runtime/2";
 export const KINDS = ["Deployment", "ReplicaSet", "Pod"];
 const text = { type: "string", minLength: 1, maxLength: 1024 };
 const nullableText = { anyOf: [text, { type: "null" }] };

@@ -15,20 +15,20 @@ export function specimen(
     uid,
     resourceVersion: "100",
     generation: 2,
-    observedGeneration: 2,
-    replicas: 2,
-    readyReplicas: 2,
-    availableReplicas: 2,
-    updatedReplicas: 2,
-    currentReplicas: 2,
+    observedGeneration: kind === "Pod" ? null : 2,
+    replicas: kind === "Pod" ? null : 2,
+    readyReplicas: kind === "Pod" ? null : 2,
+    availableReplicas: kind === "Pod" ? null : 2,
+    updatedReplicas: kind === "Deployment" ? 2 : null,
+    currentReplicas: kind === "Pod" ? null : 2,
     paused: false,
     terminating: false,
     owners: [],
     containers: [{ name: "app", image }],
     containerStatuses: [],
-    conditions: [
+    conditions: kind === "Deployment" ? [
       { type: "Progressing", status: "True", reason: "NewReplicaSetAvailable" },
-    ],
+    ] : [],
     ...overrides,
   };
 }
@@ -68,8 +68,12 @@ export function runtimeFixture() {
       namespace,
       "api-old",
       `${service}-rs-old`,
-      d.containers[0].image,
-      { owners: [{ kind: "Deployment", uid: d.uid, controller: true }] },
+      service === "orders" ? "example.invalid/orders:older" : d.containers[0].image,
+      { owners: [{ kind: "Deployment", uid: d.uid, controller: true }],
+        replicas: service === "orders" ? 2 : 1,
+        currentReplicas: service === "orders" ? 2 : 1,
+        readyReplicas: service === "orders" ? 2 : 1,
+        availableReplicas: service === "orders" ? 2 : 1 },
     );
     const next = specimen(
       "ReplicaSet",
@@ -77,19 +81,21 @@ export function runtimeFixture() {
       "api-next",
       `${service}-rs-next`,
       d.containers[0].image,
-      { owners: old.owners },
+      { owners: old.owners, replicas: 1, currentReplicas: 1,
+        readyReplicas: service === "orders" ? 0 : 1,
+        availableReplicas: service === "orders" ? 0 : 1 },
     );
     collection(namespace, "ReplicaSet", [old, next]);
-    const pod = (name, owner, image) =>
+    const pod = (name, owner, image, ready = true) =>
       specimen("Pod", namespace, name, `${service}-${name}`, image, {
         owners: [{ kind: "ReplicaSet", uid: owner.uid, controller: true }],
-        conditions: [{ type: "Ready", status: "True", reason: null }],
+        conditions: [{ type: "Ready", status: ready ? "True" : "False", reason: null }],
         containerStatuses: [
           {
             name: "app",
             image,
-            imageID: "containerd://sha256:" + "a".repeat(64),
-            ready: true,
+            imageID: null,
+            ready,
           },
         ],
       });
@@ -101,7 +107,8 @@ export function runtimeFixture() {
           ? "example.invalid/orders:older"
           : d.containers[0].image,
       ),
-      pod("api-next-1", next, d.containers[0].image),
+      ...(service === "orders" ? [pod("api-old-2", old, old.containers[0].image)] : []),
+      pod("api-next-1", next, d.containers[0].image, service !== "orders"),
     ]);
   }
   // Complete empty inventory establishes absence; denied inventory never does.

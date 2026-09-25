@@ -102,6 +102,9 @@ export function reconcileRuntime(
     podCoverage: "unknown",
     imageIdentity: "unverified",
     replicas: null,
+    classification: "information",
+    reportedFailures: [],
+    consistency: { status: "unknown", checks: [] },
     reasonCodes: [],
     evidenceIds: [],
     baselineEvidenceIds: [],
@@ -134,6 +137,19 @@ export function reconcileRuntime(
       deployment.generation !== null &&
       deployment.observedGeneration !== null &&
       deployment.observedGeneration >= deployment.generation;
+    // Conditions describe the captured generation, never a Helm root cause.
+    if (current && !deployment.terminating) {
+      for (const c of deployment.conditions) {
+        if (
+          (c.type === "Progressing" && c.status === "False" &&
+            c.reason === "ProgressDeadlineExceeded") ||
+          (c.type === "ReplicaFailure" && c.status === "True")
+        ) f.reportedFailures.push({
+          ...c, evidenceId: evidenceFor(collection, deployment),
+        });
+      }
+      if (f.reportedFailures.length) f.classification = "reported-failure";
+    }
     if (deployment.terminating) f.reasonCodes.push("deployment-terminating");
     else if (!current) f.reasonCodes.push("controller-generation-unobserved");
     else if (deployment.replicas === 0) {
@@ -210,6 +226,34 @@ export function reconcileRuntime(
       podCollection?.status === "complete"
         ? "complete"
         : "partial";
+    // Separate API lists are not atomic. Discrepancies request verification;
+    // they neither invalidate the capture nor establish deployment failure.
+    if (f.acquisition === "complete" && current && !deployment.terminating) {
+      const check = (code, reported, observed, resources) => {
+        if (reported === null) return;
+        f.consistency.checks.push({
+          code, reported, observed,
+          status: reported === observed ? "consistent" : "needs-verification",
+          evidenceIds: resources.map(([c, r]) => evidenceFor(c, r)),
+        });
+      };
+      const activePods = pods.filter((p) => !p.terminating);
+      check("deployment-pod-count", deployment.currentReplicas, activePods.length,
+        [[collection, deployment], [rsCollection, null], [podCollection, null]]);
+      for (const rs of replicasets.filter((r) => !r.terminating &&
+        r.observedGeneration !== null && r.generation !== null &&
+        r.observedGeneration >= r.generation)) {
+        const owned = (children.get(ownerKey(f.namespace, "ReplicaSet", rs.uid)) ?? [])
+          .filter((p) => p.kind === "Pod" && !p.terminating);
+        check("replicaset-pod-count", rs.currentReplicas, owned.length,
+          [[rsCollection, rs], [podCollection, null]]);
+      }
+      const discrepant = f.consistency.checks.some((c) => c.status === "needs-verification");
+      f.consistency.status = discrepant ? "needs-verification"
+        : f.consistency.checks.length ? "no-discrepancy-detected" : "unknown";
+      if (discrepant && !f.reportedFailures.length)
+        f.classification = "needs-verification";
+    }
     const versions = new Map();
     for (const p of pods)
       for (const c of p.containers) {

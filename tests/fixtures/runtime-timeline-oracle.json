@@ -1,0 +1,9 @@
+{
+  "T0": {"portal": ["matching", "complete", "information"], "orders": ["matching", "complete", "information"]},
+  "T1": {"portal": ["different", "complete", "information"], "orders": ["different", "complete", "information"]},
+  "T2": {"portal": ["matching", "complete", "information"], "orders": ["different", "complete", "information"]},
+  "T3": {"portal": ["matching", "complete", "information"], "orders": ["matching", "progressing", "information"]},
+  "T4": {"portal": ["matching", "complete", "information"], "orders": ["matching", "unknown", "reported-failure"]},
+  "T5": {"portal": ["matching", "complete", "information"], "orders": ["different", "complete", "information"]},
+  "T6": {"portal": ["matching", "complete", "information"], "orders": ["matching", "complete", "information"]}
+}
