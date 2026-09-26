@@ -58,6 +58,10 @@ jobs:
           node scripts/runtime-fixture.mjs artifacts/runtime-capture.json
           npm run runtime -- --analysis artifacts/analysis/analysis.json --capture artifacts/runtime-capture.json --out artifacts/analysis/analysis.json --at 2026-09-24T12:00:00Z
           node tests/runtime-browser.mjs
+          mkdir -p artifacts/acceptance
+          npm run runtime:acceptance -- --scenarios --out artifacts/acceptance/bundle.json
+          npm run runtime:acceptance -- --verify artifacts/acceptance/bundle.json
+          node tests/acceptance-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

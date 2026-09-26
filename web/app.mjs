@@ -2,8 +2,12 @@ import GraphCanvas from './components/GraphCanvas.mjs';
 import Inspector from './components/Inspector.mjs';
 import CompareTable from './components/CompareTable.mjs';
 import AnalysisWorkspace from './components/AnalysisWorkspace.mjs';
+import AcceptanceWorkspace from './components/AcceptanceWorkspace.mjs';
+import UsageGuide from './components/UsageGuide.mjs';
 const {createApp,ref,computed}=Vue;
 async function start(){
+ createApp(UsageGuide).mount('#usage-guide');
+ if(new URLSearchParams(location.search).get('view')==='acceptance'){createApp(AcceptanceWorkspace).mount('#app');return;}
  if(new URLSearchParams(location.search).get('view')==='analysis'){createApp(AnalysisWorkspace).mount('#app');return;}
  const response=await fetch('./data.json');if(!response.ok)throw new Error('Could not load generated architecture data');
  const data=await response.json();

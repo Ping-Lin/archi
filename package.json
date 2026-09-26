@@ -24,7 +24,8 @@
     "fixture:cross-repo": "node scripts/cross-repo-fixture.mjs",
     "traffic": "node scripts/traffic.mjs",
     "runtime": "node scripts/runtime.mjs",
-    "runtime:capture": "node scripts/runtime-capture.mjs"
+    "runtime:capture": "node scripts/runtime-capture.mjs",
+    "runtime:acceptance": "node scripts/runtime-acceptance.mjs"
   },
   "overrides": {
     "lodash": "4.18.1",

@@ -1,0 +1,19 @@
+.usage-launch { position: fixed; bottom: 18px; right: 20px; z-index: 40; border: 1px solid #d6ccf1; border-radius: 22px; padding: 11px 18px; background: #fff; color: #6846bf; box-shadow: 0 5px 24px #20164718; font-weight: 700; cursor: pointer; }
+.usage-backdrop { position: fixed; inset: 0; z-index: 100; background: #171d31a8; display: grid; place-items: center; padding: 20px; }
+.usage-dialog { position: relative; width: min(740px,100%); max-height: 92vh; overflow: auto; padding: 36px; border-radius: 22px; background: #fff; color: #29263d; box-shadow: 0 22px 80px #08051550; }
+.usage-dialog h2 { font-size: 27px; margin: 12px 0 26px; }
+.usage-close { position: absolute; right: 16px; top: 10px; border: none; background: none; font-size: 27px; cursor: pointer; }
+.usage-flow { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.usage-flow div { background: #f5f3fa; border: 1px solid #e5e0ef; border-radius: 12px; padding: 14px 10px; font-size: 12px; transition: background .3s, transform .3s; }
+.usage-flow span { display: block; font-size: 24px; font-weight: 700; margin-bottom: 8px; color: #aea3c6; }
+.usage-flow .current { background: #ede6ff; border-color: #9976eb; transform: translateY(-4px); }
+.usage-flow .current span { color: #7450ca; }
+.usage-step { animation: usage-enter .35s ease-out; padding-top: 28px; min-height: 275px; }
+.usage-step small { color: #796590; }.usage-step h3 { font-size: 22px; margin: 12px 0; }.usage-step p { line-height: 1.75; }
+.usage-action { background: #f5f6fb; border-left: 3px solid #9779e6; padding: 14px 16px; line-height: 1.6; margin: 15px 0; }
+.usage-step a { color: #6b46be; font-weight: 600; }.usage-controls { display: flex; gap: 10px; justify-content: space-between; margin-top: 22px; }
+.usage-controls button { padding: 10px 14px; border: 1px solid #ddd4ed; border-radius: 8px; background: #f6f3fc; color: #62469c; cursor: pointer; }.usage-controls button:disabled { opacity: .4; cursor: default; }
+.usage-footnote { font-size: 11px; color: #81778d; margin-top: 15px; line-height: 1.5; }
+@keyframes usage-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media(prefers-reduced-motion:reduce) { .usage-step { animation: none; }.usage-flow div { transition: none; } }
+@media(max-width:600px) { .usage-dialog { padding: 26px 18px; }.usage-flow { grid-template-columns: repeat(2,minmax(0,1fr)); }.usage-dialog h2 { font-size: 22px; }.usage-controls button { padding: 10px; font-size: 12px; } }

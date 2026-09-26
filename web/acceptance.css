@@ -1,0 +1,27 @@
+.acceptance-workspace { min-height: 100vh; background: #f5f6fb; }
+.acceptance-workspace .brand { color: #28243d; font-size: 24px; gap: 10px; }
+.acceptance-workspace .brand img { width: 32px; }
+.acceptance-workspace main { max-width: 1450px; margin: auto; padding: 40px 32px; }
+.acceptance-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.acceptance-actions label { cursor: pointer; }
+.acceptance-actions label:focus-within { outline: 2px solid #7956e8; outline-offset: 3px; }
+.acceptance-notice { border: 1px solid #d9d0f5; border-radius: 14px; padding: 20px 24px; background: #f1edff; margin: 24px 0; color: #4d4268; }
+.acceptance-notice p { margin: 8px 0 0; line-height: 1.6; }
+.acceptance-controls { display: grid; grid-template-columns: minmax(240px, 1fr) 1.4fr; gap: 30px; align-items: center; padding: 22px 0 30px; }
+.acceptance-controls label { display: grid; gap: 12px; font-weight: 600; }
+.acceptance-controls select, .acceptance-workspace .inventory-intro select { width: 100%; max-width: 100%; border: 1px solid #dcd8ec; background: white; color: #3c3454; padding: 12px; border-radius: 8px; }
+.acceptance-controls h2 { font-size: 24px; margin: 10px 0; }
+.acceptance-controls p { color: #737087; }
+.acceptance-workspace .analysis-panel { margin-top: 18px; }
+.acceptance-workspace .revision-panel { margin-top: 24px; overflow-wrap: anywhere; }
+.acceptance-workspace .capture-comparison pre { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 200px; font-size: 12px; }
+.acceptance-workspace .capture-comparison code { overflow-wrap: anywhere; white-space: normal; }
+.acceptance-workspace .analysis-tabs { background: white; border-radius: 12px; }
+@media(max-width: 700px) {
+  .acceptance-workspace main { padding: 22px 14px; }
+  .acceptance-workspace .topbar { padding: 14px; flex-wrap: wrap; gap: 12px; height: auto; }
+  .acceptance-workspace .page-heading { flex-direction: column; align-items: start; gap: 16px; }
+  .acceptance-controls { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .acceptance-controls h2 { font-size: 21px; }
+  .acceptance-workspace h1 { font-size: 30px; }
+}

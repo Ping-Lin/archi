@@ -110,7 +110,7 @@ export default {
   template: `<div class="workspace analysis-workspace">
     <aside class="sidebar"><a class="brand" href="./"><img src="./mark.svg" alt=""><span>archi<span class="brand-dot">.</span></span></a>
       <div class="workspace-switch"><span class="workspace-avatar">E</span><div>Evidence lab<span>Analysis workspace · v2</span></div></div>
-      <div class="nav-label">WORKSPACE</div><a class="nav-item" href="./">◈ &nbsp; Architecture demo</a><button class="nav-item active" @click="tab='evidence'">⌘ &nbsp; Evidence explorer</button>
+      <div class="nav-label">WORKSPACE</div><a class="nav-item" href="./">◈ &nbsp; Architecture demo</a><button class="nav-item active" @click="tab='evidence'">⌘ &nbsp; Evidence explorer</button><a class="nav-item" href="./?view=acceptance">⇄ &nbsp; Deployment scenarios</a>
       <div class="nav-label projects-label">ENVIRONMENTS</div><button v-for="s in data?.snapshots??[]" :key="s.environment" class="project-item" :class="{chosen:environment===s.environment}" @click="environment=s.environment"><i class="dot"></i>{{s.environment}}<span>{{s.dependencies.length}} edges</span></button>
       <div class="sidebar-bottom"><div class="sandbox-note"><span class="sandbox-icon">◇</span><strong>Know why it connects.</strong><p>Every conclusion keeps its evidence. Unknowns stay visible.</p></div><div class="profile"><span class="profile-avatar">P</span><div>Ping’s workspace<small>{{data?.simulation===false?'Source analysis':'Synthetic'}} · read only</small></div></div></div>
     </aside>
