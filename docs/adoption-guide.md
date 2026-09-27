@@ -1,5 +1,7 @@
 # Using Archi with your existing charts
 
+[繁體中文使用指南](adoption-guide.zh-TW.md)
+
 ## Start in the correct workspace
 
 The authored Architecture demo is fictional, not the required format for your chart.
