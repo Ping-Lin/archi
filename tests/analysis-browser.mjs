@@ -37,7 +37,7 @@ try {
   await page.getByLabel("Analysis environment").selectOption("prod");
   await page.getByRole("button", { name: /clientA/ }).click();
   await page
-    .getByText("No deployment or runtime input", { exact: true })
+    .getByText("No stored capture · deployment unknown", { exact: true })
     .waitFor();
   assert.match(
     await page.locator(".dimension-grid").innerText(),

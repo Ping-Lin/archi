@@ -36,6 +36,11 @@ try {
   await page.getByRole("button", { name: "Open runtime inventory", exact: true }).click();
   const refresh = page.getByRole("button", { name: "Refresh runtime", exact: true });
   await page.getByLabel("Runtime refresh target").waitFor();
+  assert.match(await page.locator('.data-context').innerText(), /qa · Real-input analysis/);
+  assert.match(await page.locator('.data-context').innerText(), /Stored evidence · not live/);
+  await page.locator('.refresh-checklist summary').click();
+  assert.match(await page.locator('.refresh-checklist').innerText(), /Credentials and RBAC have not been tested/);
+  assert.equal(await page.getByRole('link', {name:'繁體中文設定指南 ↗'}).count(), 1);
   assert.match(await page.locator(".runtime-panel").innerText(), /No runtime capture/);
   await page.clock.install(); await page.clock.fastForward(31000);
   await page.getByLabel("Analysis environment").selectOption("production");
@@ -46,7 +51,10 @@ try {
   await page.getByLabel("Analysis environment").selectOption("production");
   release(); await page.getByText(/Updated qa \/ commerce/).waitFor();
   assert.match(await page.locator(".runtime-panel").innerText(), /No runtime capture/);
+  assert.match(await page.locator('.data-context').innerText(), /production · Real-input analysis/);
+  assert.doesNotMatch(await page.locator('.data-context').innerText(), /commerce · imported/);
   await page.getByLabel("Analysis environment").selectOption("qa");
+  assert.match(await page.locator('.data-context').innerText(), /commerce · imported · stale/);
   await page.getByRole("button", { name: "orders", exact: true }).click();
   await page.getByRole("heading", { name: "orders", exact: true }).waitFor();
   began = new Promise((r) => { started = r; });
@@ -62,12 +70,33 @@ try {
   await page.getByRole("alert").waitFor();
   assert.match(await page.getByRole("alert").innerText(), /Previous snapshot retained/);
   assert.equal(await page.getByRole("heading", { name: "orders", exact: true }).count(), 1);
+  assert.match(await page.locator('.refresh-recovery').innerText(), /Next: reload stored analysis/);
   await page.screenshot({ path: "artifacts/runtime-refresh-failure.png", fullPage: true });
   await page.getByRole("button", { name: "Reload setup", exact: true }).click();
   await page.getByLabel("Runtime refresh target").waitFor();
+  await page.locator('.refresh-recovery summary').click();
   await page.getByRole("button", { name: "Reload stored analysis", exact: true }).click();
   await page.getByText(/Reloaded stored analysis only/).waitFor();
   assert.equal(posts, 3);
+  // A stale request token recommends setup recovery, not another cluster request.
+  await page.unroute('**/api/runtime/refresh');
+  await page.route('**/api/runtime/refresh', r => { posts++; return r.fulfill({status:403,json:{message:'Runtime token required.'}}); });
+  await refresh.click();
+  await page.getByRole('alert').waitFor();
+  assert.match(await page.locator('.refresh-recovery').innerText(), /Next: reload setup/);
+  await page.getByRole('button', {name:'Reload setup',exact:true}).click();
+  await page.getByLabel('Runtime refresh target').waitFor();
+  assert.equal(posts, 4);
+  // Unconfigured / synthetic inputs explain the disabled button without acquiring inventory.
+  await page.unroute('**/api/runtime/targets');
+  await page.route('**/api/runtime/targets', r => r.fulfill({json:{configured:false,targets:[],token:'test-only'}}));
+  stored = original;
+  await page.reload();
+  await page.getByRole('button', {name:'Open runtime inventory',exact:true}).click();
+  await page.getByText(/Refresh is not configured on this server/).waitFor();
+  assert.equal(await refresh.isDisabled(), true);
+  assert.match(await page.locator('.refresh-checklist').innerText(), /Action needed · Real-input baseline/);
+  assert.equal(posts, 4);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   await page.screenshot({ path: "artifacts/runtime-refresh-mobile.png", fullPage: true });

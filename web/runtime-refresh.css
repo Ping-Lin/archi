@@ -3,4 +3,20 @@
 .runtime-refresh select { border: 1px solid #dcd4ef; border-radius: 8px; background: white; padding: 9px; max-width: 100%; }
 .runtime-refresh button:disabled { opacity: .5; cursor: not-allowed; }.runtime-refresh-message { padding: 12px; background: white; border-radius: 8px; }
 .runtime-refresh [role=alert] { border-left: 3px solid #b47826; }
+.runtime-refresh .refresh-primary { background: #6543c0; color: #fff; border-color: #6543c0; margin-top: 14px; }
+.refresh-checklist, .refresh-recovery { margin: 14px 0; }
+.runtime-refresh summary { cursor: pointer; font-weight: 600; padding: 8px 0; }
+.refresh-checklist li { margin: 12px 0; }.refresh-checklist li p { margin: 4px 0; }
+.refresh-checklist small { display: block; margin-top: 8px; }
+.refresh-recovery .recovery-recommended { border: 2px solid #6543c0; }
+.refresh-recovery button { margin: 4px 8px 4px 0; }
+.data-context { margin: 20px 0; padding: 20px; background: #fff; border: 1px solid #ded9ed; border-radius: 12px; }
+.data-context-heading { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; margin-bottom: 16px; }
+.data-context-heading span, .data-context small { color: #625a70; }
+.data-context-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 20px; }
+.data-context-grid h3 { font-size: 14px; margin: 0 0 8px; }
+.data-context-grid p { margin: 6px 0; line-height: 1.5; }
+.data-context-grid div { min-width: 0; overflow-wrap: anywhere; }
+.data-capture + .data-capture { margin-top: 12px; padding-top: 12px; border-top: 1px solid #ded9ed; }
+@media(max-width:900px) { .data-context-grid { grid-template-columns: 1fr; }.data-context { padding: 16px; } }
 @media(max-width:600px) { .runtime-refresh { padding: 16px; margin: 12px; }.runtime-refresh label { display: grid; gap: 8px; } }

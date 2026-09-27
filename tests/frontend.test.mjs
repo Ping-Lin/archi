@@ -5,7 +5,7 @@ import {readFile} from 'node:fs/promises';
 // Compile every maintained Vue template using the exact shipped runtime.
 const source=await readFile(new URL('../web/vendor/vue-3.5.13.global.prod.js',import.meta.url),'utf8');
 vm.runInThisContext(source);
-for(const file of ['GraphCanvas','Inspector','CompareTable','AnalysisWorkspace','AnalysisGraph'])test(`${file} template compiles`,async()=>{
+for(const file of ['GraphCanvas','Inspector','CompareTable','AnalysisWorkspace','AnalysisGraph','DataContext','RuntimeRefresh','UsageGuide'])test(`${file} template compiles`,async()=>{
  const component=(await import(`../web/components/${file}.mjs`)).default;
  assert.equal(typeof Vue.compile(component.template,{decodeEntities: text=>text, onError:error=>{throw error;}}),'function');
 });

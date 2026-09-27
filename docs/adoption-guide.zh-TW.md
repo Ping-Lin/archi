@@ -9,10 +9,14 @@ Archi 將「原始碼／Helm 靜態分析」、「Kubernetes 部署擷取」與�
 | 畫面 | 用途 | 資料性質 |
 | --- | --- | --- |
 | Architecture demo | 熟悉架構圖與服務模型 | 虛構示範，不是你必須採用的 Helm 格式 |
-| Evidence lab／Evidence explorer | 檢視原始碼、Helm 分析，以及附加的 Runtime／流量證據 | 依輸入決定；請確認是否為 simulation |
+| Project analysis | 檢視原始碼、Helm 分析，以及附加的 Runtime／流量證據 | 依輸入決定；請確認是否為 simulation |
 | Deployment scenarios | 練習比較不同 CD 階段，或開啟 acceptance bundle | 內建情境是模擬資料；匯入 bundle 依其輸入模式 |
 
 每頁的 **How to use** 可開啟六步驟動畫導覽，支援播放、暫停、上／下一步、鍵盤關閉，以及減少動態效果。
+
+**Project analysis** 上方的 **Data sources and timestamps** 集中顯示三種資料：Source／Helm 的分析評估時間、每個 Runtime cluster 的擷取區間與是否過期，以及 Traffic 的觀察區間。Source 的評估時間不是部署擷取時間；Traffic 尚無 freshness 規則，不能視為即時資料。
+
+Runtime 的 **Setup checklist** 會列出 baseline、server target、環境 target 與 namespace 綁定範圍。這些檢查不會連 Kubernetes，也不代表 credentials 或 RBAC 已驗證。**Recovery options** 收納重新載入操作，失敗時自動展開並建議下一步。畫面內的中英文設定指南會開啟 GitHub，需要 repository 存取權限。
 
 ## 2. 把既有 Helm 與專案接進來
 

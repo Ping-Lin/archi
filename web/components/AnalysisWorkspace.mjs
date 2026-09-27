@@ -2,9 +2,10 @@ import AnalysisGraph from './AnalysisGraph.mjs';
 import TrafficPanel from './TrafficPanel.mjs';
 import RuntimePanel from './RuntimePanel.mjs';
 import RuntimeRefresh from './RuntimeRefresh.mjs';
+import DataContext from './DataContext.mjs';
 const { ref, computed, onMounted } = Vue;
 export default {
-  components: {AnalysisGraph,TrafficPanel,RuntimePanel,RuntimeRefresh},
+  components: {AnalysisGraph,TrafficPanel,RuntimePanel,RuntimeRefresh,DataContext},
   setup() {
     const data = ref(null),
       error = ref(""),
@@ -25,8 +26,6 @@ export default {
     const snapshot = computed(() =>
       data.value?.snapshots.find((s) => s.environment === environment.value),
     );
-    const runtimeCapturedAt = computed(() => data.value?.runtime?.[environment.value]?.reports
-      .map((r) => `${r.cluster}: ${r.finishedAt}`).join(' · '));
     const candidate = computed(
       () =>
         snapshot.value?.candidates.find((c) => c.id === selected.value || c.name === selected.value) ??
@@ -107,23 +106,22 @@ export default {
       compareRows,
       exportData,
       runtimeSelected,
-      runtimeCapturedAt,
       label,
     };
   },
   template: `<div class="workspace analysis-workspace">
     <aside class="sidebar"><a class="brand" href="./"><img src="./mark.svg" alt=""><span>archi<span class="brand-dot">.</span></span></a>
-      <div class="workspace-switch"><span class="workspace-avatar">E</span><div>Evidence lab<span>Analysis workspace · v2</span></div></div>
-      <div class="nav-label">WORKSPACE</div><a class="nav-item" href="./">◈ &nbsp; Architecture demo</a><button class="nav-item active" @click="tab='evidence'">⌘ &nbsp; Evidence explorer</button><a class="nav-item" href="./?view=acceptance">⇄ &nbsp; Deployment scenarios</a>
+      <div class="workspace-switch"><span class="workspace-avatar">E</span><div>Project analysis<span>Analysis workspace · v2</span></div></div>
+      <div class="nav-label">WORKSPACE</div><a class="nav-item" href="./" title="Fictional architecture example">◈ &nbsp; Architecture demo</a><a class="nav-item active" href="./?view=analysis" aria-current="page" title="Selected source and configuration evidence">⌘ &nbsp; Project analysis</a><a class="nav-item" href="./?view=acceptance" title="Offline rollout scenarios and acceptance bundles">⇄ &nbsp; Deployment scenarios</a>
       <div class="nav-label projects-label">ENVIRONMENTS</div><button v-for="s in data?.snapshots??[]" :key="s.environment" class="project-item" :class="{chosen:environment===s.environment}" @click="environment=s.environment"><i class="dot"></i>{{s.environment}}<span>{{s.dependencies.length}} edges</span></button>
       <div class="sidebar-bottom"><div class="sandbox-note"><span class="sandbox-icon">◇</span><strong>Know why it connects.</strong><p>Every conclusion keeps its evidence. Unknowns stay visible.</p></div><div class="profile"><span class="profile-avatar">P</span><div>Ping’s workspace<small>{{data?.simulation===false?'Source analysis':'Synthetic'}} · read only</small></div></div></div>
     </aside>
-    <div class="main-shell"><header class="topbar"><div class="breadcrumbs">Workspace <span>/</span> <strong>Evidence lab</strong></div><span class="fixture-badge">{{data?.simulation===false?'Selected source baseline':'Synthetic source analysis'}}</span></header>
-      <main v-if="error" class="analysis-empty"><h1>Start with the evidence.</h1><p>{{error}}</p><code>npm ci && npm run analyze</code><p>Helm v3.17.3 is required. The original demo remains available.</p><a href="./">Open architecture demo →</a></main>
+    <div class="main-shell"><header class="topbar"><div class="breadcrumbs">Workspace <span>/</span> <strong>Project analysis</strong></div><span class="fixture-badge">{{data?.simulation===false?'Selected source baseline':'Synthetic source analysis'}}</span></header>
+      <main v-if="error" class="analysis-empty"><h1>Prepare your project analysis.</h1><p>{{error}}</p><ol><li>Install dependencies and Helm v3.17.3.</li><li>Prepare reviewed repository revisions, chart inputs and environment bindings.</li><li>Run system analysis with output in this server's artifacts/analysis directory, then reload this page.</li></ol><p>Static analysis needs no cluster credentials. To learn without project inputs, use the fictional demo or deployment scenarios.</p><p><a href="https://github.com/Ping-Lin/archi/blob/feat/architecture-poc/docs/adoption-guide.zh-TW.md" target="_blank" rel="noopener noreferrer">繁體中文設定指南 ↗</a> · GitHub repository access required.</p><a href="./">Open architecture demo →</a> · <a href="./?view=acceptance">Open deployment scenarios →</a></main>
       <main v-else-if="snapshot"><div class="page-heading"><div><div class="eyebrow">EXPLAINABLE ARCHITECTURE</div><h1>Follow the evidence.</h1><p>Source to configuration to connection. One environment at a time.</p></div><button class="secondary-button" @click="exportData">↥ Export analysis</button></div>
         <div class="analysis-scope"><div><span class="scope-label">ANALYZING</span><strong>{{data.name}}</strong><span class="scope-divider">/</span><label><span class="sr-only">Analysis environment</span><select aria-label="Analysis environment" v-model="environment"><option v-for="s in data.snapshots" :value="s.environment">{{s.environment}}</option></select></label></div><span>Local Helm render · source/config conclusions</span></div>
         <div class="summary-grid"><div class="summary-card"><span class="summary-icon purple">↗</span><div><strong>{{snapshot.dependencies.length}}</strong><span>Resolved connections</span></div></div><div class="summary-card"><span class="summary-icon blue">◈</span><div><strong>{{snapshot.candidates.length}}</strong><span>Source candidates</span></div></div><div class="summary-card"><span class="summary-icon green">⊘</span><div><strong>{{snapshot.candidates.filter(c=>c.eligibility==='disabled').length}}</strong><span>Explicitly disabled</span></div></div><div class="summary-card"><span class="summary-icon amber">?</span><div><strong>{{snapshot.candidates.filter(c=>c.eligibility==='unknown'||c.targetResolution!=='unique').length}}</strong><span>Need investigation</span></div></div></div>
-        <div class="analysis-notice"><span>◷</span><div><strong>{{data.runtime?.[environment]?'Stored deployment capture available':assessment.observationFreshness==='stale'?'Observation is stale':snapshot.observation.coverage==='unavailable'?(data.traffic?.[environment]?'Traffic capture available · deployment unverified':'No deployment or runtime input'):'Dated fixture observations'}}</strong><span> {{runtimeCapturedAt?'Runtime capture completed · '+runtimeCapturedAt:snapshot.observation.collectedAt?'Source observation · '+snapshot.observation.collectedAt:'Source/config analysis is available independently.'}} · Release correspondence is unverified.</span><button class="text-button" @click="tab='runtime'">Open runtime inventory</button></div></div>
+        <DataContext :analysis="data" :snapshot="snapshot" :environment="environment" @runtime="tab='runtime'"/>
         <details v-if="snapshot.inputLock.revisionVector" class="revision-panel"><summary>Pinned repositories · {{Object.keys(snapshot.inputLock.revisionVector).length}} independent revisions</summary><p>Source/config inputs only. These commits do not prove deployed release versions.</p><div v-for="(revision,repository) in snapshot.inputLock.revisionVector" :key="repository"><strong>{{repository}}</strong><code>{{revision}}</code></div></details><section class="analysis-panel"><div class="analysis-tabs" role="tablist" aria-label="Analysis views"><button role="tab" :aria-selected="tab==='graph'" :class="{active:tab==='graph'}" @click="tab='graph'">Service graph</button><button role="tab" :aria-selected="tab==='evidence'" :class="{active:tab==='evidence'}" @click="tab='evidence'">Connections & evidence</button><button role="tab" :aria-selected="tab==='resources'" :class="{active:tab==='resources'}" @click="tab='resources'">Resource inventory</button><button role="tab" :aria-selected="tab==='compare'" :class="{active:tab==='compare'}" @click="tab='compare'">Compare environments</button><button role="tab" :aria-selected="tab==='traffic'" :class="{active:tab==='traffic'}" @click="tab='traffic'">Traffic evidence</button><button role="tab" :aria-selected="tab==='runtime'" :class="{active:tab==='runtime'}" @click="tab='runtime'">Runtime inventory</button></div>
           <RuntimeRefresh v-show="tab==='runtime'" :analysis="data" :environment="environment" @updated="data=$event"/>
           <div v-if="tab==='evidence'||tab==='graph'" class="analysis-split" :class="{'graph-split':tab==='graph'}"><AnalysisGraph v-if="tab==='graph'" :snapshot="snapshot" :traffic="data.traffic?.[environment]" :runtime="data.runtime?.[environment]" @runtime="runtimeSelected=$event;tab='runtime'" :selected="candidate?.id" @select="selected=$event"/><div v-else class="candidate-list"><div class="analysis-section-label">CLIENT CANDIDATES <span>{{snapshot.candidates.length}}</span></div><button v-for="c in snapshot.candidates" :key="c.id" class="candidate-card" :class="{selected:c.id===candidate?.id}" @click="selected=c.id"><div><strong>{{c.name}}</strong><span class="analysis-status" :class="c.eligibility">{{c.eligibility}}</span></div><p>{{c.source}} <span>→</span> {{c.target??'unresolved target'}}</p><small>{{c.key??'Unsupported configuration pattern'}}</small><span class="candidate-foot">{{c.eligibility==='disabled'?'Excluded by configuration':c.eligibility==='unknown'?'Registration not established':c.targetResolution==='unique'?'Included in architecture':'Target needs resolution'}} <b>↗</b></span></button></div>

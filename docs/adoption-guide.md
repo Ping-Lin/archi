@@ -5,10 +5,20 @@
 ## Start in the correct workspace
 
 The authored Architecture demo is fictional, not the required format for your chart.
-Evidence lab uses the deterministic source/Helm analysis pipeline. Deployment scenarios
+Project analysis uses the deterministic source/Helm analysis pipeline. Deployment scenarios
 is a separate synthetic learning/acceptance workspace. The **How to use** button on
 each page opens a six-step animated guide with optional playback, pause, previous/next,
 keyboard dismissal and reduced-motion support.
+
+Project analysis keeps a **Data sources and timestamps** summary above the analysis
+tabs: source assessment time is not a deployment capture time; Runtime shows each
+cluster's capture interval and display freshness; Traffic shows its observation
+window without inventing a freshness policy. None of these are live subscriptions.
+The Runtime **Setup checklist** checks the loaded baseline, configured target and
+bound namespace coverage without testing credentials or contacting Kubernetes.
+**Recovery options** contains reload actions and expands on failure, recommending
+setup reload for rejected tokens/targets and stored-analysis reload for uncertain
+refresh outcomes. Setup guides open on GitHub and require repository access.
 
 ## Your chart does not need to look like the demo
 
