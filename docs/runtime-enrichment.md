@@ -124,6 +124,12 @@ background cluster polling, watch, cache, probe or automatic diagnosis.
 
 ## Reproduce and QA
 
+The opt-in **Refresh runtime** button is now available in Runtime inventory, including
+the no-capture state. See [on-demand setup](adoption-guide.md#configure-the-button).
+It invokes the same one-shot collector through a localhost-only HTTP request; there
+is no polling, WATCH, SSE or WebSocket. Failed/incomplete acquisitions retain the
+previous overlay. Existing CLI capture/import commands below remain supported.
+
 Use Node 22+, Git and Helm v3.17.3. Choose new fixture/capture paths; creation refuses
 existing files. The UI reads the usual `artifacts/analysis/analysis.json`.
 

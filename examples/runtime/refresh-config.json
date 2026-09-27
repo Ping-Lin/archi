@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "archi/runtime-refresh-v1alpha1",
+  "targets": [
+    {
+      "id": "commerce-qa",
+      "environment": "qa",
+      "cluster": "commerce",
+      "context": "REPLACE_WITH_APPROVED_CONTEXT",
+      "kubeconfig": "/REPLACE_WITH_APPROVED_PATH/kubeconfig",
+      "namespaces": ["experience-qa", "sales-qa", "stock-qa", "sandbox-qa"]
+    }
+  ]
+}

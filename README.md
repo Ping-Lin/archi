@@ -3,8 +3,8 @@
 New here? Read [Using your existing charts](docs/adoption-guide.md), or click
 **How to use** in the app for the animated walkthrough. `/?view=acceptance` provides
 T0–T6 CD scenarios, offline acceptance-bundle import/export and capture comparison.
-The guide includes bundle creation/replay commands and separates implemented
-one-shot runtime capture from the proposed future LIST/WATCH + SSE live mode.
+The guide includes bundle creation/replay commands and opt-in **Refresh runtime**
+setup. Runtime acquisition is on demand only: no polling, WATCH, SSE or WebSocket.
 
 Cross-repository analysis is available through a pinned system manifest:
 [implemented contracts and usage](docs/model-composition.md),

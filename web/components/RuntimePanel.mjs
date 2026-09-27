@@ -55,9 +55,12 @@ export default {
       JSON.stringify([row.finding.cluster, row.finding.resourceKey]);
     watch(
       () => [props.overlay, props.selected],
-      () => {
+      (values, oldValues) => {
+        const retained = selection.value && values[1] === oldValues?.[1]
+          ? rows.value.find((r) => key(r) === key(selection.value) && r.report.environment === selection.value.report.environment)
+          : null;
         selection.value =
-          rows.value.find((r) => r.finding.instanceId === props.selected) ??
+          retained ?? rows.value.find((r) => r.finding.instanceId === props.selected) ??
           null;
       },
       { immediate: true },

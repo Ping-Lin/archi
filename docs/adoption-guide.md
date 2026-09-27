@@ -82,34 +82,61 @@ the actual CD render command/overrides, and a rendered Deployment/Service exampl
 Then separate mapping-only changes from unsupported rendering or parsing semantics.
 No cluster credentials or secret values are needed for that first assessment.
 
-## Runtime: implemented behavior versus future live transport
+## Runtime: on-demand refresh only
 
-Today the collector is an explicit, one-shot, read-only kubectl inventory operation.
-It performs paginated namespace lists for Deployments, ReplicaSets and Pods, projects
-allowlisted fields, and saves a capture. Import performs deterministic reconciliation
-and updates an analysis file. The browser fetches that file on page load; its 30-second
-timer only updates the displayed freshness. It does not query Kubernetes or refresh
-the capture. There is no automatic polling, Kubernetes watch, SSE or WebSocket yet.
+The collector performs paginated, one-shot namespace lists for Deployments,
+ReplicaSets and Pods, projects allowlisted fields, and saves a capture. The CLI
+remains available; the browser now also provides **Refresh runtime** in Runtime
+inventory. It requires explicit server configuration and a real-input baseline.
+Page load, tab/environment navigation and freshness timers never acquire inventory.
+Only clicking the button starts a collection. No polling, WATCH, SSE or WebSocket
+is implemented or planned under the current on-demand product decision.
 
 See [runtime-enrichment.md](runtime-enrichment.md) for explicit context/kubeconfig,
 namespace arguments, RBAC and import commands. Production without inventory access
 can still use static analysis; missing runtime evidence must stay unknown.
 
-For a future live mode, keep the two transport boundaries separate:
+### Configure the button
 
-1. Collector → Kubernetes: initial namespace-scoped LIST, then WATCH from the returned
-   resourceVersion, with reconnection/backoff and relist after expired history (410).
-   Credentials stay in the collector, never in browser JavaScript.
-2. Collector → reconciliation: debounce/coalesce resource changes into bounded dated
-   observations. Preserve per-kind coverage and disconnection/stale states; watches
-   across resource kinds do not make an atomic cross-kind snapshot.
-3. Backend → UI: SSE is a suitable initial choice for one-way report notifications.
-   The UI can refetch a report by version/hash. Reconnect/resync must recover missed
-   notifications; WebSocket is unnecessary unless bidirectional streaming is required.
+Use `examples/runtime/refresh-config.json` as a field template. Create a local
+configuration such as `config/runtime-refresh.local.json` (ignored by Git). Replace
+the context and absolute kubeconfig path with reviewed local values. Do not commit
+credentials. Each target declares an environment, cluster and explicit namespace
+allowlist, which must include every bound namespace of that environment/cluster.
+Only one target per environment/cluster is accepted. The browser cannot choose
+arbitrary contexts, kubeconfig paths, URLs, commands or namespaces.
 
-This is a proposed design, not a shipped live feature. A polling collector can be a
-simpler explicit alternative where WATCH is unavailable. Actual traffic remains a
-separate Istio/OTel observation source, not something Pod inventory alone establishes.
+```bash
+npm run dev -- --runtime-config config/runtime-refresh.local.json
+# Open /?view=analysis → Runtime inventory → inspect scope → Refresh runtime
+```
+
+The config is loaded at startup; restart after editing it. Without configuration,
+the button remains visible but disabled with setup guidance. Synthetic analysis
+never enables real cluster collection; prepare the reviewed `simulation: false`
+system analysis first. This does not mean a synthetic fixture can be relabeled as
+real data. The production environment may intentionally have no refresh target.
+
+The HTTP request remains open for the single collection and atomic publication.
+The collector has a 120-second budget, the API cancels at 125 seconds, and the UI
+times out at 135 seconds. Only one refresh runs per local server. No automatic
+retry occurs. A disconnect cancels outstanding kubectl work where possible;
+publication already committing may still finish. After a timeout/disconnect, reload
+stored analysis before deciding whether to retry.
+
+Complete captures update the shared runtime overlay (graph, details and export)
+without altering source/Helm or traffic data. Incomplete/denied captures are archived
+but do not replace the previous overlay. The archive is `artifacts/runtime-captures/`
+with owner-only new files; manage retention locally. The UI retains displayed old
+data on failure and does not advance its capture timestamp. Baseline changes during
+collection reject publication rather than compare against a different source snapshot.
+
+This is a localhost-only, single-user workstation feature. Host/origin checks and a
+per-server request token protect the mutation route; there is no user authentication
+or multi-tenant authorization. Do not expose it through a network bind, proxy or port
+forwarding as a shared service. Kubeconfig credential plugins execute with server-user
+authority; configure only trusted credentials and namespace-limited read-only RBAC.
+Actual traffic remains a separate Istio/OTel source, not inferred from Pod inventory.
 
 References: [Kubernetes API concepts](https://kubernetes.io/docs/reference/using-api/api-concepts/),
 [Helm v3 template](https://docs.helm.sh/docs/v3/helm/helm_template/).

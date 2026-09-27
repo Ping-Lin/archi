@@ -38,7 +38,10 @@ try {
     if(command==='serve'||command==='demo'){
       const port=Number(value('--port','4173'));
       if(!Number.isInteger(port)||port<1024||port>65535)throw new Error('port must be 1024..65535');
-      const demo=await startDemo(root,config,{port,mocks:command==='demo'});
+      const runtimePath=value('--runtime-config',null);
+      const runtimeConfig=runtimePath?JSON.parse(await readFile(path.resolve(root,runtimePath),'utf8')):undefined;
+      if(runtimeConfig)(await import('../src/runtime/refresh.mjs')).validateRefreshConfig(runtimeConfig);
+      const demo=await startDemo(root,config,{port,mocks:command==='demo',runtimeConfig});
       console.log(`Archi explorer: ${demo.url}`);
       if(command==='demo')console.log(`HTTP simulation: http://127.0.0.1:${config.services[0].port}/simulate`);
       for(const signal of ['SIGINT','SIGTERM'])process.once(signal,async()=>{await demo.close();process.exit(0);});

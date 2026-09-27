@@ -1,9 +1,10 @@
 import AnalysisGraph from './AnalysisGraph.mjs';
 import TrafficPanel from './TrafficPanel.mjs';
 import RuntimePanel from './RuntimePanel.mjs';
+import RuntimeRefresh from './RuntimeRefresh.mjs';
 const { ref, computed, onMounted } = Vue;
 export default {
-  components: {AnalysisGraph,TrafficPanel,RuntimePanel},
+  components: {AnalysisGraph,TrafficPanel,RuntimePanel,RuntimeRefresh},
   setup() {
     const data = ref(null),
       error = ref(""),
@@ -24,6 +25,8 @@ export default {
     const snapshot = computed(() =>
       data.value?.snapshots.find((s) => s.environment === environment.value),
     );
+    const runtimeCapturedAt = computed(() => data.value?.runtime?.[environment.value]?.reports
+      .map((r) => `${r.cluster}: ${r.finishedAt}`).join(' · '));
     const candidate = computed(
       () =>
         snapshot.value?.candidates.find((c) => c.id === selected.value || c.name === selected.value) ??
@@ -104,6 +107,7 @@ export default {
       compareRows,
       exportData,
       runtimeSelected,
+      runtimeCapturedAt,
       label,
     };
   },
@@ -119,8 +123,9 @@ export default {
       <main v-else-if="snapshot"><div class="page-heading"><div><div class="eyebrow">EXPLAINABLE ARCHITECTURE</div><h1>Follow the evidence.</h1><p>Source to configuration to connection. One environment at a time.</p></div><button class="secondary-button" @click="exportData">↥ Export analysis</button></div>
         <div class="analysis-scope"><div><span class="scope-label">ANALYZING</span><strong>{{data.name}}</strong><span class="scope-divider">/</span><label><span class="sr-only">Analysis environment</span><select aria-label="Analysis environment" v-model="environment"><option v-for="s in data.snapshots" :value="s.environment">{{s.environment}}</option></select></label></div><span>Local Helm render · source/config conclusions</span></div>
         <div class="summary-grid"><div class="summary-card"><span class="summary-icon purple">↗</span><div><strong>{{snapshot.dependencies.length}}</strong><span>Resolved connections</span></div></div><div class="summary-card"><span class="summary-icon blue">◈</span><div><strong>{{snapshot.candidates.length}}</strong><span>Source candidates</span></div></div><div class="summary-card"><span class="summary-icon green">⊘</span><div><strong>{{snapshot.candidates.filter(c=>c.eligibility==='disabled').length}}</strong><span>Explicitly disabled</span></div></div><div class="summary-card"><span class="summary-icon amber">?</span><div><strong>{{snapshot.candidates.filter(c=>c.eligibility==='unknown'||c.targetResolution!=='unique').length}}</strong><span>Need investigation</span></div></div></div>
-        <div class="analysis-notice"><span>◷</span><div><strong>{{data.runtime?.[environment]?'Deployment capture available · see Runtime inventory':assessment.observationFreshness==='stale'?'Observation is stale':snapshot.observation.coverage==='unavailable'?(data.traffic?.[environment]?'Traffic capture available · deployment unverified':'No deployment or runtime input'):'Dated fixture observations'}}</strong><span> {{snapshot.observation.collectedAt??'Source/config analysis is available independently.'}} · Release correspondence is unverified.</span></div></div>
+        <div class="analysis-notice"><span>◷</span><div><strong>{{data.runtime?.[environment]?'Stored deployment capture available':assessment.observationFreshness==='stale'?'Observation is stale':snapshot.observation.coverage==='unavailable'?(data.traffic?.[environment]?'Traffic capture available · deployment unverified':'No deployment or runtime input'):'Dated fixture observations'}}</strong><span> {{runtimeCapturedAt?'Runtime capture completed · '+runtimeCapturedAt:snapshot.observation.collectedAt?'Source observation · '+snapshot.observation.collectedAt:'Source/config analysis is available independently.'}} · Release correspondence is unverified.</span><button class="text-button" @click="tab='runtime'">Open runtime inventory</button></div></div>
         <details v-if="snapshot.inputLock.revisionVector" class="revision-panel"><summary>Pinned repositories · {{Object.keys(snapshot.inputLock.revisionVector).length}} independent revisions</summary><p>Source/config inputs only. These commits do not prove deployed release versions.</p><div v-for="(revision,repository) in snapshot.inputLock.revisionVector" :key="repository"><strong>{{repository}}</strong><code>{{revision}}</code></div></details><section class="analysis-panel"><div class="analysis-tabs" role="tablist" aria-label="Analysis views"><button role="tab" :aria-selected="tab==='graph'" :class="{active:tab==='graph'}" @click="tab='graph'">Service graph</button><button role="tab" :aria-selected="tab==='evidence'" :class="{active:tab==='evidence'}" @click="tab='evidence'">Connections & evidence</button><button role="tab" :aria-selected="tab==='resources'" :class="{active:tab==='resources'}" @click="tab='resources'">Resource inventory</button><button role="tab" :aria-selected="tab==='compare'" :class="{active:tab==='compare'}" @click="tab='compare'">Compare environments</button><button role="tab" :aria-selected="tab==='traffic'" :class="{active:tab==='traffic'}" @click="tab='traffic'">Traffic evidence</button><button role="tab" :aria-selected="tab==='runtime'" :class="{active:tab==='runtime'}" @click="tab='runtime'">Runtime inventory</button></div>
+          <RuntimeRefresh v-show="tab==='runtime'" :analysis="data" :environment="environment" @updated="data=$event"/>
           <div v-if="tab==='evidence'||tab==='graph'" class="analysis-split" :class="{'graph-split':tab==='graph'}"><AnalysisGraph v-if="tab==='graph'" :snapshot="snapshot" :traffic="data.traffic?.[environment]" :runtime="data.runtime?.[environment]" @runtime="runtimeSelected=$event;tab='runtime'" :selected="candidate?.id" @select="selected=$event"/><div v-else class="candidate-list"><div class="analysis-section-label">CLIENT CANDIDATES <span>{{snapshot.candidates.length}}</span></div><button v-for="c in snapshot.candidates" :key="c.id" class="candidate-card" :class="{selected:c.id===candidate?.id}" @click="selected=c.id"><div><strong>{{c.name}}</strong><span class="analysis-status" :class="c.eligibility">{{c.eligibility}}</span></div><p>{{c.source}} <span>→</span> {{c.target??'unresolved target'}}</p><small>{{c.key??'Unsupported configuration pattern'}}</small><span class="candidate-foot">{{c.eligibility==='disabled'?'Excluded by configuration':c.eligibility==='unknown'?'Registration not established':c.targetResolution==='unique'?'Included in architecture':'Target needs resolution'}} <b>↗</b></span></button></div>
             <div v-if="candidate" class="evidence-detail"><div class="detail-heading"><div><div class="eyebrow">CONNECTION EXPLANATION</div><h2>{{candidate.name}}</h2></div><span class="analysis-status" :class="candidate.eligibility">{{candidate.eligibility==='enabled'&&candidate.targetResolution==='unique'?'Included':label(candidate.eligibility)}}</span></div>
               <div class="connection-strip"><div><small>SOURCE</small><strong>{{candidate.source}}</strong></div><span>→</span><div><small>{{candidate.targetResolution==='unique'?'RESOLVED TARGET':'TARGET'}}</small><strong>{{candidate.target??candidate.targetResolution}}</strong></div></div>

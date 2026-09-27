@@ -25,7 +25,7 @@ export const COLLECTION_LIMITS = Object.freeze({
   durationMs: 120000,
   pageBytes: 8 * 1024 * 1024,
 });
-export function kubectlReader({ context, kubeconfig, binary = "kubectl" }) {
+export function kubectlReader({ context, kubeconfig, binary = "kubectl", signal }) {
   insist(
     typeof context === "string" &&
       context.length > 0 &&
@@ -54,6 +54,7 @@ export function kubectlReader({ context, kubeconfig, binary = "kubectl" }) {
           maxBuffer: COLLECTION_LIMITS.pageBytes,
           killSignal: "SIGKILL",
           windowsHide: true,
+          signal,
         },
       );
       return stdout;
@@ -65,7 +66,7 @@ export function kubectlReader({ context, kubeconfig, binary = "kubectl" }) {
 
 export async function collectRuntime(
   { environment, cluster, context, namespaces },
-  { read, clock = () => Date.now() } = {},
+  { read, clock = () => Date.now(), signal } = {},
 ) {
   insist(
     [environment, cluster, context].every(
@@ -102,6 +103,7 @@ export async function collectRuntime(
     records = 0;
   for (const namespace of namespaces)
     for (const kind of KINDS) {
+      signal?.throwIfAborted();
       const c = {
         namespace,
         kind,
@@ -120,6 +122,7 @@ export async function collectRuntime(
         pages = 0;
       try {
         do {
+          signal?.throwIfAborted();
           if (clock() - start >= COLLECTION_LIMITS.durationMs)
             throw Error("deadline-exceeded");
           if (
