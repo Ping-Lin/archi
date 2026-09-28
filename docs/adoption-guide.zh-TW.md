@@ -212,3 +212,26 @@ Replay 需要相同的 Runtime source files、package-lock 與已安裝 dependen
 | Production 不允許連線 | 保留靜態分析；不要將未知狀態當成 absent 或成功 |
 
 建議先選一個可讀取的 QA 環境，完成「靜態分析 → 手動 Refresh runtime → 檢查 scope／時間／證據 → 匯出 review」流程，再增加其他環境。真實 cluster 連線、RBAC 與部署端到端驗證仍需在你的環境實測；模擬情境或 CI 通過不能取代這些驗證。
+
+## AI 候選審核：不用手改 hash
+
+AI 候選檔 commit 並固定 revision 後，可用以下指令列出各環境的待審項目；
+不需要執行 Helm 或連線 cluster：
+
+```bash
+node scripts/ai-candidates.mjs queue --root APPROVED_ROOT --system system.json --service SERVICE_ID
+```
+
+檢查清單中的原始碼引用、conditions 與 unknowns，再用 `review` 指令明確指定
+candidate ID、完整 hash、environment、instance、reviewer 與 reason。
+指令支援 `accepted`、`rejected`、`unreviewed`（撤回該項審核），只產生新 manifest，
+不覆寫原檔、不修改 Git，也不會一次批准所有環境。
+完整指令見 [AI review workflow](ai-candidates.md#review-queue-and-safe-manifest-output)。
+
+產出的 manifest 要重新 analyze，再重新載入頁面才會生效。
+`accepted` 不是保證會有 edge：未知條件、不完整設定或不支援的 endpoint 仍會阻擋。
+過期的 review 會列在 `staleReviews`，不會被自動刪除，需另外明確處理。
+
+畫面 **Connections & evidence** 現在可搜尋 client、service、設定 key 或 reviewer，
+也可篩選待審、接受、拒絕與需要調查的候選。右側直接顯示原始碼引用與 commit；
+畫面是唯讀，篩選不會修改關係圖或送出審核。

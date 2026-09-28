@@ -1,4 +1,6 @@
 import AnalysisGraph from './AnalysisGraph.mjs';
+import CandidateList from './CandidateList.mjs';
+import { filterCandidates } from '../candidate-review.mjs';
 import TrafficPanel from './TrafficPanel.mjs';
 import RuntimePanel from './RuntimePanel.mjs';
 import RuntimeRefresh from './RuntimeRefresh.mjs';
@@ -7,13 +9,13 @@ import AnalysisTabs from './AnalysisTabs.mjs';
 import { helpContext } from '../help-context.mjs';
 const { ref, computed, onMounted, watchEffect, onUnmounted } = Vue;
 export default {
-  components: {AnalysisGraph,TrafficPanel,RuntimePanel,RuntimeRefresh,DataContext,AnalysisTabs},
+  components: {AnalysisGraph,CandidateList,TrafficPanel,RuntimePanel,RuntimeRefresh,DataContext,AnalysisTabs},
   setup() {
     const data = ref(null),
       error = ref(""),
       environment = ref("dev"),
       selected = ref("clientA"),
-      tab = ref("graph"), runtimeSelected = ref(null);
+      tab = ref("graph"), runtimeSelected = ref(null), candidateQuery = ref(''), candidateFilter = ref('all');
     watchEffect(() => { helpContext.analysis = { loaded: !!data.value, tab: tab.value,
       environment: environment.value, simulation: data.value?.simulation,
       runtime: !!data.value?.runtime?.[environment.value], traffic: !!data.value?.traffic?.[environment.value] }; });
@@ -32,10 +34,12 @@ export default {
     const snapshot = computed(() =>
       data.value?.snapshots.find((s) => s.environment === environment.value),
     );
+    const filteredCandidates = computed(() => filterCandidates(snapshot.value?.candidates ?? [], candidateQuery.value, candidateFilter.value));
+    const selectableCandidates = computed(() => tab.value === 'evidence' ? filteredCandidates.value : snapshot.value?.candidates ?? []);
     const candidate = computed(
       () =>
-        snapshot.value?.candidates.find((c) => c.id === selected.value || c.name === selected.value) ??
-        snapshot.value?.candidates[0],
+        selectableCandidates.value.find((c) => c.id === selected.value || c.name === selected.value) ??
+        selectableCandidates.value[0],
     );
     const resolution = computed(() =>
       snapshot.value?.resolutions.find(
@@ -58,6 +62,8 @@ export default {
       fact.evidenceIds.map((id) =>
         snapshot.value.evidence.find((e) => e.id === id),
       );
+    const aiCitations = computed(() => [...new Map(facts.value.flatMap(evidenceFor)
+      .filter(e => e?.type === 'ai_source_reference').map(e => [e.id,e])).values()]);
     const assessment = computed(() =>
       data.value?.assessments.find((a) => a.environment === environment.value),
     );
@@ -98,6 +104,9 @@ export default {
       error,
       environment,
       selected,
+      candidateQuery,
+      candidateFilter,
+      filteredCandidates,
       tab,
       snapshot,
       candidate,
@@ -105,6 +114,7 @@ export default {
       sourceInstance,
       sourceRevisions,
       facts,
+      aiCitations,
       evidenceFor,
       assessment,
       freshness,
@@ -130,16 +140,17 @@ export default {
         <DataContext :analysis="data" :snapshot="snapshot" :environment="environment" @runtime="tab='runtime'"/>
         <details v-if="snapshot.inputLock.revisionVector" class="revision-panel"><summary>Pinned repositories · {{Object.keys(snapshot.inputLock.revisionVector).length}} independent revisions</summary><p>Source/config inputs only. These commits do not prove deployed release versions.</p><div v-for="(revision,repository) in snapshot.inputLock.revisionVector" :key="repository"><strong>{{repository}}</strong><code>{{revision}}</code></div></details><section class="analysis-panel"><AnalysisTabs v-model="tab"/><div id="analysis-view-panel" role="tabpanel" :aria-labelledby="'analysis-tab-'+tab" tabindex="0">
           <RuntimeRefresh v-show="tab==='runtime'" :analysis="data" :environment="environment" @updated="data=$event"/>
-          <div v-if="tab==='evidence'||tab==='graph'" class="analysis-split" :class="{'graph-split':tab==='graph'}"><AnalysisGraph v-if="tab==='graph'" :snapshot="snapshot" :traffic="data.traffic?.[environment]" :runtime="data.runtime?.[environment]" @runtime="runtimeSelected=$event;tab='runtime'" :selected="candidate?.id" @select="selected=$event"/><div v-else class="candidate-list"><div class="analysis-section-label">CLIENT CANDIDATES <span>{{snapshot.candidates.length}}</span></div><button v-for="c in snapshot.candidates" :key="c.id" class="candidate-card" :class="{selected:c.id===candidate?.id}" @click="selected=c.id"><div><strong>{{c.name}}</strong><span class="analysis-status" :class="c.eligibility">{{c.eligibility}}</span></div><p>{{c.source}} <span>→</span> {{c.target??'unresolved target'}}</p><small>{{c.key??'Unsupported configuration pattern'}}</small><span class="candidate-foot">{{c.eligibility==='disabled'?'Excluded by configuration':c.eligibility==='unknown'?'Registration not established':c.targetResolution==='unique'?'Included in architecture':'Target needs resolution'}} <b>↗</b></span></button></div>
+          <div v-if="tab==='evidence'||tab==='graph'" class="analysis-split" :class="{'graph-split':tab==='graph'}"><AnalysisGraph v-if="tab==='graph'" :snapshot="snapshot" :traffic="data.traffic?.[environment]" :runtime="data.runtime?.[environment]" @runtime="runtimeSelected=$event;tab='runtime'" :selected="candidate?.id" @select="selected=$event"/><CandidateList v-else :candidates="filteredCandidates" :total="snapshot.candidates.length" :selected="candidate?.id" v-model:query="candidateQuery" v-model:filter="candidateFilter" @select="selected=$event"/>
             <div v-if="candidate" class="evidence-detail"><div class="detail-heading"><div><div class="eyebrow">CONNECTION EXPLANATION</div><h2>{{candidate.name}}</h2></div><span class="analysis-status" :class="candidate.eligibility">{{candidate.eligibility==='enabled'&&candidate.targetResolution==='unique'?'Included':label(candidate.eligibility)}}</span></div>
               <div class="connection-strip"><div><small>SOURCE</small><strong>{{candidate.source}}</strong></div><span>→</span><div><small>{{candidate.targetResolution==='unique'?'RESOLVED TARGET':'TARGET'}}</small><strong>{{candidate.target??candidate.targetResolution}}</strong></div></div>
               <div v-if="sourceInstance" class="binding-detail"><strong>{{candidate.sourceProject}} / {{candidate.sourceService}}</strong><p>Instance {{sourceInstance.id}} · {{sourceInstance.scope.cluster}} / {{sourceInstance.scope.namespace}} / {{sourceInstance.scope.name}}</p><p v-for="r in sourceRevisions">Source {{r.repository}} <code>{{r.revision}}</code></p><p v-if="candidate.targetService">Target {{candidate.targetProject}} / {{candidate.targetService}} · instance {{candidate.target}}</p></div><div class="dimension-grid"><div><span>Target mapping</span><strong>{{candidate.targetResolution}}</strong></div><div><span>Runtime evidence</span><strong>{{candidate.runtimeSupport}}<small v-if="candidate.runtimeSupport==='observed'"> · {{freshness}}</small></strong></div><div><span>Consistency</span><strong>{{candidate.consistency}}</strong></div></div>
               <section v-if="candidate.extraction" class="ai-candidate-note" aria-label="AI candidate review"><h3>AI-assisted candidate · {{candidate.extraction.status}}</h3><p>Evidence bytes and scope verified. Semantic interpretation is {{candidate.extraction.status==='accepted'?'accepted by a declared operator review, not verified by a language parser':'not accepted for a dependency edge'}}.</p><p>Protocol: {{candidate.extraction.protocol}} · Reviewer: {{candidate.extraction.reviewer??'None'}}</p><p v-if="candidate.extraction.reason">{{candidate.extraction.reason}}</p><small>Candidate hash: {{candidate.extraction.candidateHash}}</small></section>
+              <section v-if="candidate.extraction" class="ai-candidate-note" aria-label="AI source citations"><h3>Review the cited source</h3><div v-for="e in aiCitations" :key="e.id"><strong>{{e.locator}}:{{e.startLine}}–{{e.endLine}}</strong><small>Commit {{e.provenance?.revision}}</small><pre>{{e.quote}}</pre></div><p>Exact source bytes do not prove the interpretation. Review decisions are saved through the local CLI, then reanalyzed; this page remains read only.</p><a href="https://github.com/Ping-Lin/archi/blob/feat/architecture-poc/docs/ai-candidates.md#review-queue-and-safe-manifest-output" target="_blank" rel="noopener noreferrer">Review workflow and commands ↗</a></section>
               <h3>Why this result</h3><ul class="reason-list"><li v-for="reason in candidate.reasons">{{reason}}</li></ul>
               <h3>Evidence trail <span>{{chain.length+1}} steps</span></h3><ol class="evidence-timeline"><li><span class="step-marker">1</span><div><strong>Source candidate</strong><p>{{candidate.file}}:{{candidate.line}}</p><code>{{candidate.key??'No supported literal key'}}</code></div></li><li v-for="(fact,i) in chain" :key="fact.id"><span class="step-marker">{{i+2}}</span><div><strong>{{fact.predicate==='property.value'?'Configuration value':fact.predicate==='resource.present'?'Rendered target resource':'Runtime observation'}}</strong><p v-for="e in evidenceFor(fact)">{{e.locator}}</p><code>{{fact.value.value??fact.value.name??fact.value.target}}</code><small v-if="fact.predicate==='property.value'">Precedence {{fact.value.precedence}} · later supported source wins</small></div></li></ol>
               <details class="fact-details"><summary>Inspect all input facts ({{facts.length}})</summary><div v-for="fact in facts" :key="fact.id"><strong>{{fact.predicate}}</strong><pre>{{JSON.stringify(fact.value,null,2)}}</pre><p v-for="e in evidenceFor(fact)">{{e.type}} · {{e.locator}}<br><small>SHA-256 {{e.contentHash}}</small></p></div></details>
               <div class="resolution-footer"><span>{{resolution.rule}} · {{resolution.version}}</span><code>{{resolution.id}}</code></div>
-            </div><div v-else class="analysis-empty">No supported client candidates were extracted. Inspect diagnostics below.</div>
+            </div><div v-else class="analysis-empty">{{snapshot.candidates.length?'No candidate matches these filters. Clear filters to inspect other connections.':'No supported client candidates were extracted. Inspect diagnostics below.'}}</div>
           </div>
           <RuntimePanel v-else-if="tab==='runtime'" :overlay="data.runtime?.[environment]" :selected="runtimeSelected"/><TrafficPanel v-else-if="tab==='traffic'" :report="data.traffic?.[environment]"/><div v-else-if="tab==='resources'" class="analysis-table-wrap"><div class="inventory-intro"><h2>Presence is not health.</h2><p>Within the selected render scopes. Comparison covers container images only; scaling ownership and release correspondence are unknown.</p></div><table class="analysis-table"><thead><tr><th>Resource</th><th>Presence</th><th>Supported fields</th><th>Observed health</th></tr></thead><tbody><tr v-for="r in snapshot.resourceComparisons" :key="JSON.stringify([r.caller,r.key])"><td><strong>{{r.name}}</strong><small>{{r.caller ? r.caller+' · ' : ''}}{{r.kind}} · {{r.uid??'No observed UID'}}</small></td><td>{{label(r.presence)}}</td><td>{{label(r.comparison)}}</td><td><span class="analysis-status" :class="r.health==='ready'?'enabled':'unknown'">{{r.health}}</span><small v-if="r.replicas">{{r.replicas.ready??'?'}} / {{r.replicas.live??'?'}} ready</small></td></tr></tbody></table></div>
           <div v-else class="analysis-table-wrap"><div class="inventory-intro"><h2>Independent inputs. Different outcomes.</h2><p>Dev observations never confirm production dependencies. Disabled candidates keep their explanation.</p></div><table class="analysis-table"><thead><tr><th>Candidate</th><th v-for="s in data.snapshots">{{s.environment}}</th></tr></thead><tbody><tr v-for="row in compareRows"><td><strong>{{row.source}} / {{row.name}}</strong></td><td v-for="s in data.snapshots"><template v-for="c in s.candidates.filter(c=>c.source===row.source&&c.name===row.name)"><span class="analysis-status" :class="c.eligibility">{{c.eligibility}}</span><small>{{c.target??c.targetResolution}} · runtime {{c.runtimeSupport}}</small></template><small v-if="!s.candidates.some(c=>c.source===row.source&&c.name===row.name)">Not discovered within analyzed scope</small></td></tr></tbody></table><div class="snapshot-hashes"><div v-for="s in data.snapshots"><strong>{{s.environment}}</strong><code>{{s.contentHash}}</code></div></div></div>

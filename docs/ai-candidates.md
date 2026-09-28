@@ -118,6 +118,46 @@ accepted candidate language-parser-verified or runtime-observed.
 Exported analysis includes cited source excerpts and review metadata. Keep it inside
 the approved data boundary and inspect/redact sensitive content before sharing.
 
+## Review queue and safe manifest output
+
+After committing the candidate bundle and pinning its input revision, inspect all
+candidate/environment/instance combinations without Helm or cluster access:
+
+```bash
+node scripts/ai-candidates.mjs queue --root APPROVED_ROOT --system system.json --service orders
+```
+
+The JSON queue includes exact source quotations, conditions, unknowns, review status,
+candidate hashes and stale review declarations. It does not resolve deployment
+endpoints. Inspect semantics and completeness before accepting a candidate.
+
+Use its candidate ID and hash to record one explicitly authorized decision:
+
+```bash
+node scripts/ai-candidates.mjs review --root APPROVED_ROOT --system system.json \
+  --service orders --candidate CLIENT_ID --hash EXACT_HASH_FROM_QUEUE \
+  --environment qa --instance orders-qa --decision accepted \
+  --reviewer 'YOUR_IDENTITY' --reason 'YOUR_REVIEW_FINDINGS' --out NEW_REVIEWED_MANIFEST.json
+```
+
+`rejected` records rejection; `unreviewed` removes this exact scoped review. Every
+operation requires an explicit identity and reason. The command prints the previous
+and requested decisions; removal is not a persisted audit event. Commit the output
+using your normal review policy if history is needed. No bulk approval is provided.
+Other scopes, candidates and stale declarations remain untouched. Stale declarations
+still block analysis until explicitly removed or corrected in the manifest.
+
+The command reads the pinned bundle, checks its evidence and expected candidate hash,
+and writes a **new** manifest, never overwriting an existing file or changing Git.
+Output paths are relative to your shell directory; repository paths continue to be
+relative to `--root`. Reanalyze the new manifest with the same root and reload the UI.
+Acceptance cannot bypass unknowns, inactive conditions or unsupported endpoints.
+
+In **Connections & evidence**, search by client, instance, service, configuration key
+or reviewer, and filter by AI review status or investigation need. The inspector
+shows cited source lines and revisions. These filters are view-only; browser review
+remains read only and does not submit decisions or mutate analysis.
+
 ## Validation and limits
 
 Strict schemas reject extra fields (including direct targetService answers),

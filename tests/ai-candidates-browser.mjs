@@ -22,8 +22,15 @@ try{
  displayed=accepted;await page.reload();await page.locator('.analyzed-edge').first().waitFor();
  assert.equal(await page.locator('.analyzed-edge').count(),4);
  await page.getByRole('tab',{name:'Connections & evidence'}).click();
+ await page.getByLabel('Candidate filter',{exact:true}).selectOption('accepted');
+ assert.equal(await page.locator('.candidate-card').count(),1);
+ await page.getByLabel('Find a connection',{exact:true}).fill('not-present');
+ assert.equal(await page.locator('.candidate-card').count(),0);
+ assert.equal(await page.locator('.evidence-detail').count(),0);
+ await page.getByRole('button',{name:'Clear filters',exact:true}).click();
  await page.locator('.candidate-card').filter({hasText:'portal'}).click();
  assert.match(await page.getByRole('region',{name:'AI candidate review'}).innerText(),/accepted[\s\S]*synthetic-reviewer/);
+ assert.match(await page.getByRole('region',{name:'AI source citations'}).innerText(),/getValue\("downstream.url"\)/);
  const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export analysis'}).click();
  const exported=JSON.parse(await readFile(await(await download).path(),'utf8'));
  assert.equal(exported.dependencies.find(e=>e.source==='portal').extraction.status,'accepted');
