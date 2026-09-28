@@ -1,5 +1,6 @@
 import { hash, identify, VERSION, assertSnapshot } from "./contract.mjs";
 import { resourceKey } from "./helm.mjs";
+import { endpointKeys, resolveEndpointBinding } from './endpoint-binding.mjs';
 
 function endpoint(value) {
   try {
@@ -114,7 +115,7 @@ export function resolveCandidates(
       candidate.factId,
       properties.scopeFact,
       ...(targetFact ? [targetFact] : []),
-      ...(properties.chains[candidate.key] ?? []),
+      ...(candidate.endpointBinding ? endpointKeys(candidate.endpointBinding).flatMap(k=>properties.chains[k]??[]) : properties.chains[candidate.key] ?? []),
     ];
     const reasons = [...candidate.unsupported];
     let eligibility = "enabled";
@@ -156,8 +157,13 @@ export function resolveCandidates(
       reasons.push(
         candidate.extraction ? 'Operator accepted the AI extraction; supported conditions are satisfied. This is a declared review, not parser verification or execution proof.' : "Explicit bean registration and supported conditions are satisfied; execution is not proven",
       );
-    const value = properties.values[candidate.key] ?? null;
-    let url = properties.complete ? endpoint(value) : null;
+    const value = candidate.endpointBinding ? Object.fromEntries(endpointKeys(candidate.endpointBinding).map(k=>[k,properties.values[k]??null])) : properties.values[candidate.key] ?? null;
+    let url = properties.complete ? (candidate.endpointBinding ? resolveEndpointBinding(candidate.endpointBinding,candidate.extraction.protocol,properties.values) : endpoint(value)) : null;
+    if(candidate.endpointBinding) {
+      const bindingEvidence=[...new Set(ledger.facts.filter(f=>facts.includes(f.id)).flatMap(f=>f.evidenceIds))];
+      facts.push(ledger.fact('endpoint.binding',candidate.id,{binding:candidate.endpointBinding,protocol:candidate.extraction.protocol,url},bindingEvidence));
+      reasons.push(url?'Endpoint constructed from explicitly bound configuration keys':'Endpoint binding has missing, invalid or unsupported values');
+    }
     if(candidate.extraction && (!url || new URL(url).protocol !== candidate.extraction.protocol.toLowerCase()+':')) {
       url=null; if(eligibility !== 'disabled') eligibility='unknown'; reasons.push('AI-declared protocol and supported configured endpoint do not agree');
     }
@@ -249,7 +255,7 @@ export function resolveCandidates(
       [...new Set(facts)],
       outcome,
       reasons,
-      targetResolver ? "deployment-endpoint/1" : undefined,
+      targetResolver ? (candidate.endpointBinding ? 'endpoint-binding/1 + deployment-endpoint/1' : "deployment-endpoint/1") : undefined,
     );
     const resolved = {
       ...candidate,

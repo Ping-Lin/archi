@@ -225,9 +225,9 @@ function flatten(value, prefix = "", out = {}) {
   }
   return out;
 }
-export function resolveProperties(files, env, resources, source, ledger) {
-  const values = {},
-    chains = {},
+export function resolveProperties(files, env, resources, source, ledger, options = {}) {
+  const values = Object.create(null),
+    chains = Object.create(null),
     diagnostics = [];
   let complete = env.propertiesComplete;
   const add = (mapping, locator, type) => {
@@ -261,9 +261,12 @@ export function resolveProperties(files, env, resources, source, ledger) {
   };
   for (const file of env.propertyFiles) {
     try {
-      const doc = parseDocument(files.get(file), { uniqueKeys: true });
-      if (doc.errors.length) throw new Error(doc.errors[0].message);
-      add(flatten(doc.toJS({ maxAliasCount: 100 })), file, "config_resolution");
+      if (options.parseFile) add(options.parseFile(file,files.get(file)),file,'config_resolution');
+      else {
+        const doc = parseDocument(files.get(file), { uniqueKeys: true });
+        if (doc.errors.length) throw new Error(doc.errors[0].message);
+        add(flatten(doc.toJS({ maxAliasCount: 100 })), file, "config_resolution");
+      }
     } catch (error) {
       complete = false;
       diagnostics.push({
@@ -305,17 +308,25 @@ export function resolveProperties(files, env, resources, source, ledger) {
         "envFrom, command/args, or mounted configuration requires another property adapter",
     });
   }
-  const variables = container?.env ?? [];
+  const variables = [...(container?.env ?? [])];
+  // Explicit env bindings override files; application JSON overrides both.
+  if (options.environmentBindings) variables.sort((a,b) => Number(a.name==='SPRING_APPLICATION_JSON')-Number(b.name==='SPRING_APPLICATION_JSON'));
+  for (const binding of options.environmentBindings ?? []) {
+    if (!variables.some(v=>v.name===binding.name)) {
+      complete=false;
+      diagnostics.push({code:'ENV_BINDING_MISSING',message:`Declared environment variable unavailable: ${binding.name}`});
+    }
+  }
   if (new Set(variables.map((v) => v.name)).size !== variables.length)
     complete = false;
   for (const variable of variables) {
     if (
       variable.name === "SPRING_APPLICATION_JSON" &&
-      typeof variable.value === "string"
+      typeof variable.value === "string" && !variable.valueFrom
     ) {
       try {
         add(
-          flatten(JSON.parse(variable.value)),
+          (options.flatten ?? flatten)(JSON.parse(variable.value)),
           `${deployment.key}/env/SPRING_APPLICATION_JSON`,
           "helm_render",
         );
@@ -328,7 +339,7 @@ export function resolveProperties(files, env, resources, source, ledger) {
       }
     } else if (
       variable.name === "SPRING_PROFILES_ACTIVE" &&
-      typeof variable.value === "string"
+      typeof variable.value === "string" && !variable.valueFrom
     ) {
       if (
         JSON.stringify(variable.value.split(",").sort()) !==
@@ -340,6 +351,9 @@ export function resolveProperties(files, env, resources, source, ledger) {
           message: "Rendered profiles differ from reviewed environment scope",
         });
       }
+    } else if (options.environmentBindings?.some(b=>b.name===variable.name) && typeof variable.value==='string' && !variable.valueFrom) {
+      const binding=options.environmentBindings.find(b=>b.name===variable.name);
+      add({[binding.key]:variable.value},`${deployment.key}/env/${variable.name}`,'helm_render');
     } else {
       complete = false;
       diagnostics.push({
@@ -361,6 +375,7 @@ export function resolveProperties(files, env, resources, source, ledger) {
     contentHash: hash({
       profiles: env.profiles,
       propertiesComplete: env.propertiesComplete,
+      ...(options.environmentBindings ? {adapter:'spring-properties/2',environmentBindings:options.environmentBindings,propertyFiles:env.propertyFiles} : {}),
     }),
   });
   const scopeFact = ledger.fact(

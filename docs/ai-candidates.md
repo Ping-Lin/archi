@@ -5,6 +5,11 @@ structured proposals extracted by an AI or operator from selected source files.
 It does not call an LLM, send source to a provider, execute source, or contact a
 cluster. Use your approved coding agent to fill the template. No polling is added.
 
+For differently named configuration keys, `.properties` inputs, environment
+bindings and split host/port, use the additive `ai-evidence/2` and
+`spring-properties/2` contracts in [configuration bindings](configuration-bindings.md).
+The v1 workflow and limits documented below remain unchanged.
+
 ## Try the complete synthetic example
 
 ```bash

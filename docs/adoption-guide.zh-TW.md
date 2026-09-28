@@ -215,6 +215,13 @@ Replay 需要相同的 Runtime source files、package-lock 與已安裝 dependen
 
 ## AI 候選審核：不用手改 hash
 
+不同專案使用自己的設定 key 時，可使用新增的
+[configuration binding 設定](configuration-bindings.md)。`spring-properties/2`
+支援有界的 `.properties`／YAML 與明確環境變數 mapping；`ai-evidence/2`
+讓 template 描述完整 URL key 或分開的 host／port keys，不要求修改專案格式。
+這不是完整 Spring Boot 設定引擎：placeholder、Config Data imports、gRPC 等
+尚未支援，遇到未知來源仍不會產生確定連線。完整可執行範例見該文件。
+
 AI 候選檔 commit 並固定 revision 後，可用以下指令列出各環境的待審項目；
 不需要執行 Helm 或連線 cluster：
 

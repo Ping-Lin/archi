@@ -33,6 +33,11 @@ export const bindingSchema = object({
   propertyFiles: list(fileRef),
   propertiesComplete: { type: "boolean" },
 });
+// Optional, versioned configuration policy. Omission retains the v1 adapter.
+bindingSchema.properties.configuration = object({
+  adapter: {const:'spring-properties/2'},
+  environmentBindings: list(object({name:{...text,pattern:'^[A-Za-z_][A-Za-z0-9_]*$'},key:text})),
+});
 export const systemSchema = object({
   schemaVersion: { const: SYSTEM_VERSION },
   simulation: { type: "boolean" },
@@ -58,7 +63,7 @@ export const systemSchema = object({
           files: { ...list(fileRef), minItems: 1 },
           clientTypes: { ...unique(text), minItems: 1 },
         }),object({
-        adapter:{const:'ai-evidence/1'},
+        adapter:{enum:['ai-evidence/1','ai-evidence/2']},
         files:{...list(fileRef),minItems:1},
         candidateFile:fileRef,
         reviews:list(object({candidateHash:{type:'string',pattern:'^[a-f0-9]{64}$'},environment:id,instance:id,
@@ -130,7 +135,7 @@ export function validateSystem(manifest) {
   for (const s of manifest.services) {
     if (!projects.has(s.project)) throw Error(`Unknown project: ${s.project}`);
     s.source.files.forEach(file);
-    if(s.source.adapter==='ai-evidence/1') {
+    if(s.source.adapter.startsWith('ai-evidence/')) {
       file(s.source.candidateFile);
       const scopes=new Set();
       for(const r of s.source.reviews){
@@ -162,6 +167,15 @@ export function validateSystem(manifest) {
         throw Error("Workload bound to multiple instances");
       workloads.add(key);
       i.propertyFiles.forEach(file);
+      if (i.configuration) {
+        const names=new Set(),keys=new Set();
+        for(const b of i.configuration.environmentBindings) {
+          if(names.has(b.name)||keys.has(b.key))throw Error('Duplicate environment binding');
+          if(b.name.startsWith('SPRING_')||['JAVA_TOOL_OPTIONS','JDK_JAVA_OPTIONS','_JAVA_OPTIONS'].includes(b.name)||b.key.startsWith('spring.'))
+            throw Error('Framework bootstrap environment bindings are unsupported');
+          names.add(b.name);keys.add(b.key);
+        }
+      }
     }
     for (const t of env.externalTargets) {
       if (instances.has(t.id))

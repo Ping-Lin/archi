@@ -132,6 +132,7 @@ export async function analyzeSystem(
           profiles: instance.profiles,
           propertyFiles: instance.propertyFiles.map(refPath),
           propertiesComplete: instance.propertiesComplete,
+          environmentBindings: instance.configuration?.environmentBindings,
           observations: null,
           targets: [],
         };
@@ -144,7 +145,7 @@ export async function analyzeSystem(
           service, simulation:manifest.simulation, provenance:inputs.provenance,
         };
         const extracted = runAdapter(service.source.adapter, context),
-          properties = runAdapter("spring-properties/1", context);
+          properties = runAdapter(instance.configuration?.adapter ?? "spring-properties/1", context);
         const part = buildSnapshot({
           env: scope,
           inputLock: lock,

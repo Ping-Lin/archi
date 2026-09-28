@@ -3,7 +3,7 @@ import { validateSystem } from './system-contract.mjs';
 
 // Review commands read the same pinned bundle as analysis, never a workspace draft.
 export function loadReviewBundle(inputs, service) {
-  if (service.source.adapter !== 'ai-evidence/1') throw Error('Service does not use ai-evidence/1');
+  if (!['ai-evidence/1','ai-evidence/2'].includes(service.source.adapter)) throw Error('Service does not use ai-evidence/1 or ai-evidence/2');
   const ref = service.source.candidateFile;
   const raw = inputs.files.get(`${ref.repository}/${ref.path}`);
   if (typeof raw !== 'string' || Buffer.byteLength(raw) > 2 * 1024 * 1024)
@@ -28,7 +28,7 @@ export function reviewQueue(inputs, service) {
           environment: env.id, instance: instance.id,
           status: review?.decision ?? 'unreviewed',
           reviewer: review?.reviewer ?? null, reason: review?.reason ?? null,
-          protocol: c.protocol, endpointKey: c.endpointKey,
+          protocol: c.protocol, ...(c.endpoint?{endpoint:c.endpoint}:{endpointKey:c.endpointKey}),
           conditions: c.conditions, unknowns: c.unknowns, evidence: c.evidence,
         };
       })));

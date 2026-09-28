@@ -1,5 +1,6 @@
 import Ajv from 'ajv';
 import { hash, identify } from './contract.mjs';
+import { endpointBindingSchema, endpointKeys } from './endpoint-binding.mjs';
 
 const text = {type:'string',minLength:1,maxLength:2048};
 const digest = {type:'string',pattern:'^[a-f0-9]{64}$'};
@@ -17,9 +18,17 @@ export const aiCandidateSchema = object({
   }),500),
 });
 const validate = new Ajv({allErrors:true}).compile(aiCandidateSchema);
+export const aiCandidateSchemaV2=structuredClone(aiCandidateSchema);
+aiCandidateSchemaV2.properties.schemaVersion={const:'archi/ai-candidates-v1alpha2'};
+const candidateV2=aiCandidateSchemaV2.properties.candidates.items;
+delete candidateV2.properties.endpointKey;
+candidateV2.properties.endpoint=endpointBindingSchema;
+candidateV2.required=candidateV2.required.filter(k=>k!=='endpointKey').concat('endpoint');
+const validateV2=new Ajv({allErrors:true}).compile(aiCandidateSchemaV2);
 export const candidateHash = (bundle,candidate) => hash({schemaVersion:bundle.schemaVersion,simulation:bundle.simulation,service:bundle.service,candidate});
 export function verifyAiBundle(bundle,{service,simulation,files,provenance}) {
-  if (!validate(bundle)) throw Error('Invalid AI candidate bundle: '+JSON.stringify(validate.errors));
+  const validator=service.source.adapter==='ai-evidence/2'?validateV2:validate;
+  if (!validator(bundle)) throw Error('Invalid AI candidate bundle: '+JSON.stringify(validator.errors));
   if (bundle.service!==service.id || bundle.simulation!==simulation) throw Error('AI candidate service or input mode mismatch');
   const allowed = new Set(service.source.files.map(f=>`${f.repository}/${f.path}`)), ids=new Set();
   for (const c of bundle.candidates) {
@@ -52,12 +61,13 @@ export function extractAiCandidates(context) {
     const evidenceIds=[bundleEvidence,...c.evidence.map(e=>ledger.recordEvidence({type:'ai_source_reference',locator:`${e.repository}/${e.path}`,contentHash:e.contentHash,
       provenance:{repository:e.repository,revision:e.revision,path:e.path,contentHash:e.contentHash},startLine:e.startLine,endLine:e.endLine,quote:e.quote}))];
     if(review)evidenceIds.push(ledger.recordEvidence({type:'declared_candidate_review',locator:`system.manifest/services/${service.id}/reviews`,contentHash:hash(review),review}));
-    const id=identify('candidate',{environment:env.id,source:source.service,adapter:'ai-evidence/1',candidate:c.id});
+    const id=identify('candidate',{environment:env.id,source:source.service,adapter:service.source.adapter,candidate:c.id});
     const extraction={method:'ai-assisted',status,candidateHash:digest,protocol:c.protocol,reviewer:review?.reviewer??null,reason:review?.reason??null};
     return {id,name:c.name,source:source.service,file:`${c.evidence[0].repository}/${c.evidence[0].path}`,line:c.evidence[0].startLine,
-      key:c.endpointKey,conditions:c.conditions,unsupported,extraction,
-      factId:ledger.fact('client.candidate',id,{name:c.name,key:c.endpointKey,conditions:c.conditions,unsupported,extraction},evidenceIds)};
+      key:c.endpoint ? endpointKeys(c.endpoint).join(' + ') : c.endpointKey,
+      ...(c.endpoint?{endpointBinding:c.endpoint}:{}),conditions:c.conditions,unsupported,extraction,
+      factId:ledger.fact('client.candidate',id,{name:c.name,...(c.endpoint?{endpointBinding:c.endpoint}:{key:c.endpointKey}),conditions:c.conditions,unsupported,extraction},evidenceIds)};
   });
   return {candidates,diagnostics:[{code:'AI_SEMANTICS_REVIEW',message:'AI candidates are evidence-bound proposals. Accepted reviews are local operator assertions, not authenticated approval or parser verification.'}],
-    coverage:{collector:'ai-evidence',status:'partial',scope:source.files,meaning:'Supplied candidates only; omitted clients are not proven absent. Property semantics remain limited to the existing Spring property adapter.'}};
+    coverage:{collector:'ai-evidence',status:'partial',scope:source.files,meaning:'Supplied candidates only; omitted clients are not proven absent. Property semantics are limited to the selected configuration adapter.'}};
 }
