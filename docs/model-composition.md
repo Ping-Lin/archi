@@ -13,7 +13,11 @@ the original v2 single-repository configurations and their CLI remain supported.
 | Capture | `src/analysis/repositories.mjs` | Read explicitly pinned local Git objects; capture and hash approved source/config files |
 | Composition | `src/analysis/system-run.mjs` | Render each release, analyze each instance, combine evidence and produce existing UI snapshots |
 
-Adapters are `spring-explicit-bean/1`, `spring-properties/1` and `helm-template/1`.
+Adapters are `spring-explicit-bean/1`, `ai-evidence/1`, `spring-properties/1` and `helm-template/1`.
+The opt-in [AI candidate adapter](ai-candidates.md) accepts evidence-bound proposals
+with scoped operator reviews; it is not a general language parser. Unreviewed or
+rejected proposals never create edges. Property and endpoint semantics retain their
+existing supported boundaries.
 Their runtime result schemas enforce required candidate/property/resource fields,
 coverage and diagnostics where applicable. Existing source syntax restrictions
 still apply. There is no arbitrary executable plugin loading or config rule DSL.

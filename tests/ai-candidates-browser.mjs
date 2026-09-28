@@ -1,0 +1,35 @@
+import {createRequire} from 'node:module';
+import {mkdtemp,rm,readFile} from 'node:fs/promises';
+import os from 'node:os';import path from 'node:path';import assert from 'node:assert/strict';
+import {createAiFixture} from '../scripts/ai-candidates-fixture.mjs';
+import {analyzeSystem} from '../src/analysis/system-run.mjs';
+const {chromium}=createRequire(import.meta.url)('playwright');
+const root=await mkdtemp(path.join(os.tmpdir(),'archi-ai-browser-'));
+let browser;
+try{
+ const f=await createAiFixture(path.join(root,'inputs'));
+ const unreviewed=await analyzeSystem(f.root,'system.json'),accepted=await analyzeSystem(f.root,'accepted.json');
+ let displayed=unreviewed;
+ browser=await chromium.launch({headless:true,executablePath:process.env.ARCHI_BROWSER_EXECUTABLE||undefined});
+ const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/analysis.json',r=>r.fulfill({json:displayed}));
+ await page.goto((process.env.ARCHI_URL??'http://127.0.0.1:4173')+'/?view=analysis');
+ await page.locator('.analyzed-edge').first().waitFor();
+ assert.equal(await page.locator('.analyzed-edge').count(),3);
+ await page.getByRole('button',{name:'Inspect excluded downstream',exact:true}).click();
+ assert.match(await page.getByRole('region',{name:'AI candidate review'}).innerText(),/unreviewed/);
+ assert.match(await page.locator('.evidence-detail').innerText(),/orders/);
+ displayed=accepted;await page.reload();await page.locator('.analyzed-edge').first().waitFor();
+ assert.equal(await page.locator('.analyzed-edge').count(),4);
+ await page.getByRole('tab',{name:'Connections & evidence'}).click();
+ await page.locator('.candidate-card').filter({hasText:'portal'}).click();
+ assert.match(await page.getByRole('region',{name:'AI candidate review'}).innerText(),/accepted[\s\S]*synthetic-reviewer/);
+ const download=page.waitForEvent('download');await page.getByRole('button',{name:'Export analysis'}).click();
+ const exported=JSON.parse(await readFile(await(await download).path(),'utf8'));
+ assert.equal(exported.dependencies.find(e=>e.source==='portal').extraction.status,'accepted');
+ await page.screenshot({path:'artifacts/ai-candidates-review.png',fullPage:true});
+ await page.getByLabel('Analysis environment').selectOption('production');
+ assert.match(await page.getByRole('region',{name:'AI candidate review'}).innerText(),/unreviewed/);
+ await page.setViewportSize({width:390,height:844});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ assert.deepEqual(errors,[]);console.log('AI candidate browser passed: proposal visibility, review provenance, scoped edges and export');
+}finally{await browser?.close();await rm(root,{recursive:true,force:true});}

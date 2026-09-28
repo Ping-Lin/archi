@@ -3,6 +3,7 @@
 .runtime-refresh select { border: 1px solid #dcd4ef; border-radius: 8px; background: white; padding: 9px; max-width: 100%; }
 .runtime-refresh button:disabled { opacity: .5; cursor: not-allowed; }.runtime-refresh-message { padding: 12px; background: white; border-radius: 8px; }
 .runtime-refresh [role=alert] { border-left: 3px solid #b47826; }
+.ai-candidate-note { background: #f7f3fc; border: 1px solid #dcd4ef; border-radius: 10px; padding: 16px; margin: 16px 0; overflow-wrap: anywhere; }.ai-candidate-note p { line-height: 1.6; }
 .runtime-table-controls { margin: 16px 24px; }.runtime-table-controls p { font-size: 13px; color: #625a70; }
 .analysis-tabs button:focus-visible, #analysis-view-panel:focus-visible, .runtime-panel :focus-visible, .usage-dialog :focus-visible { outline: 3px solid #6543c0; outline-offset: 3px; }
 .runtime-refresh .refresh-primary { background: #6543c0; color: #fff; border-color: #6543c0; margin-top: 14px; }

@@ -23,7 +23,7 @@ export function projectServiceGraph(snapshot, query = "") {
     )
     .map((e) => ({
       ...e,
-      name: candidates.get(e.candidateId).name,
+      name: candidates.get(e.candidateId).name + (e.extraction ? ' · reviewed AI' : ''),
       consistency: candidates.get(e.candidateId).consistency,
     }));
   const sourceIds = [

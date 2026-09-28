@@ -86,6 +86,21 @@ npm run dev
 
 ## 3. Runtime：按下按鈕才擷取
 
+### 補充：不同專案的 client 寫法
+
+現在可為個別 service 選擇 `ai-evidence/1` adapter。AI 依 template 填入 client、endpoint 設定 key、條件及 source 引用，再交由既有分析流程處理。它不會直接呼叫外部 AI，也不會自動核准語意。未審核／拒絕的候選即使能對到目標，也不會產生 dependency edge。
+
+```bash
+node scripts/ai-candidates-fixture.mjs artifacts/ai-demo
+npm run analyze -- --root artifacts/ai-demo --system system.json --out ../analysis
+# 啟動 UI 後查看未審核候選；以下為模擬人工接受 QA 候選的版本：
+npm run analyze -- --root artifacts/ai-demo --system accepted.json --out ../analysis
+```
+
+Fixture 是模擬 Kotlin source 與人工編寫的候選，不是真實 AI 執行或真實人工審查。正式流程、template/check 指令與 review 欄位請看 [AI candidates guide](ai-candidates.md)。Reviewer 是本地設定的聲明，不是已驗證身分；不可讓 AI 自行核准。gRPC target、自訂 property precedence、host/port 組裝仍維持 unknown。
+
+### Runtime 擷取方式
+
 Runtime collector 透過 `kubectl`，對明確指定的 namespaces 分頁讀取 Deployments、ReplicaSets、Pods，僅保留允許的欄位，產生一次性 capture。
 
 **開頁面、換 tab、切換環境或更新資料新鮮度提示，都不會擷取 inventory。只有按下 Refresh runtime 才會執行。** 目前沒有 polling、WATCH、SSE 或 WebSocket，也沒有自動重試。

@@ -53,11 +53,17 @@ export const systemSchema = object({
       object({
         id,
         project: id,
-        source: object({
+        source: {oneOf:[object({
           adapter: { const: "spring-explicit-bean/1" },
           files: { ...list(fileRef), minItems: 1 },
           clientTypes: { ...unique(text), minItems: 1 },
-        }),
+        }),object({
+        adapter:{const:'ai-evidence/1'},
+        files:{...list(fileRef),minItems:1},
+        candidateFile:fileRef,
+        reviews:list(object({candidateHash:{type:'string',pattern:'^[a-f0-9]{64}$'},environment:id,instance:id,
+          decision:{enum:['accepted','rejected']},reviewer:text,reason:text})),
+        })]},
       }),
     ),
     minItems: 1,
@@ -124,6 +130,16 @@ export function validateSystem(manifest) {
   for (const s of manifest.services) {
     if (!projects.has(s.project)) throw Error(`Unknown project: ${s.project}`);
     s.source.files.forEach(file);
+    if(s.source.adapter==='ai-evidence/1') {
+      file(s.source.candidateFile);
+      const scopes=new Set();
+      for(const r of s.source.reviews){
+        const env=manifest.environments.find(e=>e.id===r.environment);
+        if(!env?.instances.some(i=>i.id===r.instance&&i.service===s.id))throw Error('AI review scope does not belong to service');
+        const key=JSON.stringify([r.candidateHash,r.environment,r.instance]);
+        if(scopes.has(key))throw Error('Duplicate AI review scope');scopes.add(key);
+      }
+    }
   }
   for (const env of manifest.environments) {
     const releases = ids(env.releases, "release"),

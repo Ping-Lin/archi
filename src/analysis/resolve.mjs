@@ -154,10 +154,13 @@ export function resolveCandidates(
       }
     if (eligibility === "enabled")
       reasons.push(
-        "Explicit bean registration and supported conditions are satisfied; execution is not proven",
+        candidate.extraction ? 'Operator accepted the AI extraction; supported conditions are satisfied. This is a declared review, not parser verification or execution proof.' : "Explicit bean registration and supported conditions are satisfied; execution is not proven",
       );
-    const value = properties.values[candidate.key] ?? null,
-      url = properties.complete ? endpoint(value) : null;
+    const value = properties.values[candidate.key] ?? null;
+    let url = properties.complete ? endpoint(value) : null;
+    if(candidate.extraction && (!url || new URL(url).protocol !== candidate.extraction.protocol.toLowerCase()+':')) {
+      url=null; if(eligibility !== 'disabled') eligibility='unknown'; reasons.push('AI-declared protocol and supported configured endpoint do not agree');
+    }
     const resolvedTarget = targetResolver ? targetResolver(url, ledger) : null;
     if (resolvedTarget) {
       facts.push(...resolvedTarget.factIds);
@@ -241,7 +244,7 @@ export function resolveCandidates(
     };
     const resolutionId = ledger.resolve(
       targetResolver
-        ? "explicit-bean-to-deployment"
+        ? (candidate.extraction ? 'reviewed-ai-candidate-to-deployment' : "explicit-bean-to-deployment")
         : "explicit-bean-to-endpoint",
       [...new Set(facts)],
       outcome,
@@ -275,6 +278,7 @@ export function resolveCandidates(
         protocol: new URL(target.url).protocol.replace(":", "").toUpperCase(),
         candidateId: candidate.id,
         resolutionId,
+        ...(candidate.extraction?{extraction:candidate.extraction}:{}),
       });
   }
   return { candidates, dependencies };

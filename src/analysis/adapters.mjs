@@ -1,6 +1,7 @@
 import { extractSpring, resolveProperties } from "./spring.mjs";
 import { renderHelm } from "./helm.mjs";
 import Ajv from "ajv";
+import { extractAiCandidates } from './ai-candidates.mjs';
 
 const records = { type: "array", items: { type: "object" } };
 const coverage = {
@@ -18,6 +19,7 @@ const result = (required, properties) => ({
   properties: { ...properties, diagnostics: records },
 });
 export const adapterResultSchemas = Object.freeze({
+  'ai-evidence/1':result(['candidates','coverage'],{candidates:records,coverage}),
   "spring-explicit-bean/1": result(["candidates", "coverage"], {
     candidates: {
       type: "array",
@@ -65,6 +67,7 @@ export function validateAdapterResult(id, result) {
 
 // Closed, versioned built-ins. A manifest selects an adapter, never executable code.
 export const adapterContracts = Object.freeze({
+  'ai-evidence/1':Object.freeze({input:'pinned-source + candidate-bundle + scoped-declared-reviews',output:'candidates + coverage + diagnostics',engine:'evidence-validation/1'}),
   "spring-explicit-bean/1": Object.freeze({
     input: "captured-java-files + caller-scope",
     output: "candidates + coverage + diagnostics",
@@ -90,6 +93,7 @@ export function runAdapter(id, context) {
       context.env,
       context.ledger,
     );
+  else if (id === 'ai-evidence/1') result=extractAiCandidates(context);
   else if (id === "spring-properties/1")
     result = resolveProperties(
       context.files,

@@ -121,6 +121,7 @@ export async function analyzeSystem(
           service: instance.id,
           files: service.source.files.map(refPath),
           clientTypes: service.source.clientTypes,
+          candidateFile: service.source.candidateFile ? refPath(service.source.candidateFile) : null,
           workloadKey: workloadKey(instance, release),
         };
         const scope = {
@@ -140,6 +141,7 @@ export async function analyzeSystem(
           env: scope,
           ledger,
           resources,
+          service, simulation:manifest.simulation, provenance:inputs.provenance,
         };
         const extracted = runAdapter(service.source.adapter, context),
           properties = runAdapter("spring-properties/1", context);

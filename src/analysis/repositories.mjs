@@ -13,7 +13,7 @@ import { hash } from "./contract.mjs";
 import { validateSystem, safeRepoPath } from "./system-contract.mjs";
 
 export const refPath = (ref) => `${ref.repository}/${safeRepoPath(ref.path)}`;
-export async function captureSystem(root, manifestPath) {
+export async function captureSystem(root, manifestPath, { includeCandidates = true } = {}) {
   const manifest = validateSystem(
     JSON.parse(await readFile(path.resolve(root, manifestPath), "utf8")),
   );
@@ -82,6 +82,7 @@ export async function captureSystem(root, manifestPath) {
       const service = manifest.services.find((s) => s.id === i.service);
       for (const ref of [...service.source.files, ...i.propertyFiles])
         paths.add(read(ref));
+      if(includeCandidates && service.source.candidateFile)paths.add(read(service.source.candidateFile));
     }
     for (const release of env.releases) {
       const repo = repositories.get(release.chart.repository);

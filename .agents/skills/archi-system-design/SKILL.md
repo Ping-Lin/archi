@@ -24,6 +24,14 @@ collection, WATCH, SSE or WebSocket. Runtime button setup is opt-in; read
 Preparing config does not authorize querying a cluster. Do not probe credentials
 or RBAC automatically during onboarding.
 
+For unfamiliar client syntax, read `docs/ai-candidates.md` and use the opt-in
+`ai-evidence/1` source adapter. Generate a template with `scripts/ai-candidates.mjs`,
+fill literal config keys and exact pinned source citations, and run `check` before
+analysis. Report unsupported semantics in unknowns. Never add acceptance decisions
+on behalf of an operator or fabricate reviewer identity; leave source.reviews empty
+unless the user explicitly authorizes the specific review. Evidence validation is
+not semantic proof, and gRPC/custom configuration semantics remain unsupported.
+
 For Istio/OTel traffic evidence, read `docs/traffic.md`. Prepare the system analysis
 first, then import a scoped capture with `npm run traffic`. Use exported wire-format
 data with explicit coverage and sampling; generated specimens must remain labeled
