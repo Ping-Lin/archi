@@ -33,6 +33,28 @@ try {
     else { stored = updated; await r.fulfill({ json: { analysis: updated, environment: "qa", cluster: "commerce", capturedAt: report.finishedAt } }); }
   });
   await page.goto((process.env.ARCHI_URL ?? "http://127.0.0.1:4173") + "/?view=analysis");
+  const help = async (pattern) => {
+    await page.getByRole('button', {name:'How to use'}).click();
+    assert.match(await page.getByRole('region', {name:'Help for this view'}).innerText(), pattern);
+    await page.keyboard.press('Escape');
+    assert.match(await page.locator(':focus').innerText(), /How to use/);
+  };
+  const tabs = page.getByRole('tablist', {name:'Analysis views'});
+  assert.equal(await tabs.locator('[tabindex="0"]').count(), 1);
+  await page.getByRole('tab', {name:'Service graph',exact:true}).focus();
+  await page.keyboard.press('ArrowRight');
+  assert.equal(await page.getByRole('tab', {name:'Connections & evidence'}).getAttribute('aria-selected'), 'true');
+  await page.keyboard.press('End');
+  assert.equal(await page.getByRole('tab', {name:'Runtime inventory',exact:true}).getAttribute('aria-selected'), 'true');
+  await page.keyboard.press('Tab');
+  assert.equal(await page.locator(':focus').getAttribute('role'), 'tabpanel');
+  await page.getByRole('tab', {name:'Runtime inventory',exact:true}).focus();
+  await page.keyboard.press('ArrowRight');
+  assert.equal(await page.locator(':focus').innerText(), 'Service graph');
+  await page.keyboard.press('ArrowLeft');
+  assert.equal(await page.locator(':focus').innerText(), 'Runtime inventory');
+  await page.keyboard.press('Home');
+  assert.equal(await page.locator(':focus').innerText(), 'Service graph');
   await page.getByRole("button", { name: "Open runtime inventory", exact: true }).click();
   const refresh = page.getByRole("button", { name: "Refresh runtime", exact: true });
   await page.getByLabel("Runtime refresh target").waitFor();
@@ -42,11 +64,13 @@ try {
   assert.match(await page.locator('.refresh-checklist').innerText(), /Credentials and RBAC have not been tested/);
   assert.equal(await page.getByRole('link', {name:'繁體中文設定指南 ↗'}).count(), 1);
   assert.match(await page.locator(".runtime-panel").innerText(), /No runtime capture/);
+  await help(/Capture runtime when needed/);
   await page.clock.install(); await page.clock.fastForward(31000);
   await page.getByLabel("Analysis environment").selectOption("production");
   await page.getByLabel("Analysis environment").selectOption("qa");
   assert.equal(posts, 0, "navigation and timers must not collect");
   await refresh.click(); await began;
+  await help(/A one-shot capture is running/);
   assert.equal(await page.getByRole("button", { name: "Refreshing…", exact: true }).isDisabled(), true);
   await page.getByLabel("Analysis environment").selectOption("production");
   release(); await page.getByText(/Updated qa \/ commerce/).waitFor();
@@ -71,6 +95,7 @@ try {
   assert.match(await page.getByRole("alert").innerText(), /Previous snapshot retained/);
   assert.equal(await page.getByRole("heading", { name: "orders", exact: true }).count(), 1);
   assert.match(await page.locator('.refresh-recovery').innerText(), /Next: reload stored analysis/);
+  await help(/Recover before retrying/);
   await page.screenshot({ path: "artifacts/runtime-refresh-failure.png", fullPage: true });
   await page.getByRole("button", { name: "Reload setup", exact: true }).click();
   await page.getByLabel("Runtime refresh target").waitFor();
@@ -96,6 +121,7 @@ try {
   await page.getByText(/Refresh is not configured on this server/).waitFor();
   assert.equal(await refresh.isDisabled(), true);
   assert.match(await page.locator('.refresh-checklist').innerText(), /Action needed · Real-input baseline/);
+  await help(/This baseline is synthetic/);
   assert.equal(posts, 4);
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

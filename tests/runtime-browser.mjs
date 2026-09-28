@@ -47,6 +47,9 @@ try {
     page
       .locator(".runtime-table tr")
       .filter({ has: page.getByRole("button", { name, exact: true }) });
+  assert.equal(await page.locator('.runtime-table th').count(), 4);
+  await page.getByLabel('Show comparison columns').check();
+  assert.equal(await page.locator('.runtime-table th').count(), 7);
   assert.match(
     await row("orders").innerText(),
     /different[\s\S]*progressing[\s\S]*available/,
@@ -108,6 +111,8 @@ try {
   assert.match(await detail.innerText(), /Assessment at capture: reported-failure/);
   assert.match(await detail.innerText(), /Controller-reported failure at capture: Progressing=False/);
   assert.match(await detail.innerText(), /ProgressDeadlineExceeded/);
+  assert.match(await row("orders").innerText(), /Controller-reported failure/);
+  await page.getByLabel('Show comparison columns').check();
   assert.match(await row("orders").innerText(), /reported-failure/);
   assert.deepEqual(errors, []);
   console.log(

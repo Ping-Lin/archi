@@ -20,6 +20,16 @@ bound namespace coverage without testing credentials or contacting Kubernetes.
 setup reload for rejected tokens/targets and stored-analysis reload for uncertain
 refresh outcomes. Setup guides open on GitHub and require repository access.
 
+Runtime inventory defaults to four columns. **Show comparison columns** reveals
+presence, image-reference alignment and assessment columns; selecting a workload
+always opens full details. Controller-reported failures and needs-verification
+indicators remain visible in the compact view. Image differences alone are not errors.
+In Project analysis, Tab enters the selected analysis tab; Left/Right wrap between
+views and Home/End select the first/last view. Tab then enters the labeled panel.
+These keys only change the view, never collect data. **How to use** includes a
+context card based on the current view/state when opened, followed by the existing
+six-step walkthrough; Escape closes it and restores focus to the launcher.
+
 ## Your chart does not need to look like the demo
 
 The system pipeline calls Helm on your chart and ordered values files, then inspects

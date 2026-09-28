@@ -1,4 +1,5 @@
-const { ref, computed, watch, onMounted, onUnmounted } = Vue;
+import { helpContext } from '../help-context.mjs';
+const { ref, computed, watch, watchEffect, onMounted, onUnmounted } = Vue;
 export default {
   props: ["analysis", "environment"], emits: ["updated"],
   setup(props, { emit }) {
@@ -7,6 +8,8 @@ export default {
     let request;
     const targets = computed(() => catalog.value?.targets.filter((t) => t.environment === props.environment) ?? []);
     const target = computed(() => targets.value.find((t) => t.id === targetId.value));
+    watchEffect(() => { helpContext.refresh = { ready: !!target.value?.enabled, pending: pending.value,
+      scope: activeScope.value, failed: failed.value, recovery: recovery.value }; });
     const snapshot = computed(() => props.analysis.snapshots.find((s) => s.environment === props.environment));
     const checklist = computed(() => [
       { label: 'Real-input baseline', ready: !props.analysis.simulation, detail: props.analysis.simulation ? 'Synthetic inputs cannot query a real cluster. Prepare reviewed source analysis or use Deployment scenarios.' : 'Real-input analysis loaded; this does not verify the deployed revision.' },
@@ -67,7 +70,7 @@ export default {
           : e.message} Displayed results are unchanged. No automatic retry.`;
       } finally { clearTimeout(deadline); request = null; pending.value = false; activeScope.value = ""; }
     }
-    onMounted(settings); onUnmounted(() => request?.abort());
+    onMounted(settings); onUnmounted(() => { request?.abort(); helpContext.refresh = null; });
     return { catalog, targetId, target, targets, checklist, pending, loading, loadingMessage, message, failed, recovery, activeScope, settings, reloadStored, refresh };
   },
   template: `<section class="runtime-refresh" aria-label="On-demand runtime refresh" :aria-busy="pending">

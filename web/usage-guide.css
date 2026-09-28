@@ -14,6 +14,8 @@
 .usage-step a { color: #6b46be; font-weight: 600; }.usage-controls { display: flex; gap: 10px; justify-content: space-between; margin-top: 22px; }
 .usage-controls button { padding: 10px 14px; border: 1px solid #ddd4ed; border-radius: 8px; background: #f6f3fc; color: #62469c; cursor: pointer; }.usage-controls button:disabled { opacity: .4; cursor: default; }
 .usage-footnote { font-size: 11px; color: #81778d; margin-top: 15px; line-height: 1.5; }
+.usage-context { background: #f5f3fa; border: 1px solid #ddd4ed; border-radius: 12px; padding: 16px; margin-bottom: 24px; }
+.usage-context h3 { margin: 0 0 8px; }.usage-context p { line-height: 1.65; }.usage-context small { display: block; margin-top: 10px; color: #625a70; }
 @keyframes usage-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media(prefers-reduced-motion:reduce) { .usage-step { animation: none; }.usage-flow div { transition: none; } }
 @media(max-width:600px) { .usage-dialog { padding: 26px 18px; }.usage-flow { grid-template-columns: repeat(2,minmax(0,1fr)); }.usage-dialog h2 { font-size: 22px; }.usage-controls button { padding: 10px; font-size: 12px; } }

@@ -18,6 +18,10 @@ Archi 將「原始碼／Helm 靜態分析」、「Kubernetes 部署擷取」與�
 
 Runtime 的 **Setup checklist** 會列出 baseline、server target、環境 target 與 namespace 綁定範圍。這些檢查不會連 Kubernetes，也不代表 credentials 或 RBAC 已驗證。**Recovery options** 收納重新載入操作，失敗時自動展開並建議下一步。畫面內的中英文設定指南會開啟 GitHub，需要 repository 存取權限。
 
+Runtime 表格預設四欄；勾選 **Show comparison columns** 可展開 presence、image references 與 assessment，點 workload 則可查看完整詳細資料。Controller failure 與待確認提示不會因為精簡表格而隱藏，版本差異本身也不會標成錯誤。
+
+Project analysis 的 tabs 支援鍵盤：Tab 進入目前選取的 tab，左右方向鍵循環切換，Home／End 到第一／最後一項，再按 Tab 進入對應 panel。這些操作不會擷取資料。**How to use** 會依開啟時的畫面與狀態提供情境提示，再接原有六步驟導覽；Escape 關閉後焦點回到導覽按鈕。
+
 ## 2. 把既有 Helm 與專案接進來
 
 ### 不需要把公司的 chart 改成 demo 格式
