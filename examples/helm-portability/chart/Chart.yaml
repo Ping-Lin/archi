@@ -1,0 +1,4 @@
+apiVersion: v2
+name: enterprise-workload
+version: 0.1.0
+description: Synthetic nested-values and helper-naming portability specimen

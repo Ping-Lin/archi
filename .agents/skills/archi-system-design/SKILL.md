@@ -1,14 +1,28 @@
 ---
 name: archi-system-design
-description: Configure Archi simulations or onboard a synthetic repository to evidence-based analysis, with reviewed environment mappings and explainable service graphs.
+description: Configure Archi simulations or onboard approved source and Helm repositories to evidence-based analysis. Use for existing chart adoption, cross-repository system manifests, environment bindings, compatibility review and on-demand runtime setup.
 ---
 
 # Archi system design
 
 Choose the mode before editing. For v2 source/Helm analysis onboarding or service
 graphs, read [references/analysis-onboarding.md](references/analysis-onboarding.md)
-and `docs/model-v2.md`; use the analysis CLI, not the v1 generator. The remaining
+and `docs/model-v2.md`; for cross-repo or real inputs also read `docs/model-composition.md`
+and [references/onboarding-checklist.md](references/onboarding-checklist.md).
+Use the analysis CLI, not the v1 generator. The remaining
 workflow below applies to v1 authored simulation changes.
+
+For real inputs, use the system manifest with reviewed `simulation: false` inputs.
+Legacy analysis configs and the v1 generator remain synthetic-only. Never relabel
+fixtures as real evidence. Use the onboarding checklist to record CD inputs,
+proposed bindings, unsupported semantics and independent expected outcomes before
+running analysis. Existing values keys do not need to match Archi's demo.
+
+Keep acquisition on demand only. Do not implement or recommend polling, scheduled
+collection, WATCH, SSE or WebSocket. Runtime button setup is opt-in; read
+`docs/adoption-guide.md` and `docs/runtime-enrichment.md` before configuring targets.
+Preparing config does not authorize querying a cluster. Do not probe credentials
+or RBAC automatically during onboarding.
 
 For Istio/OTel traffic evidence, read `docs/traffic.md`. Prepare the system analysis
 first, then import a scoped capture with `npm run traffic`. Use exported wire-format

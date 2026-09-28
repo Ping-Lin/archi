@@ -1,8 +1,11 @@
-# Onboard a synthetic repository to v2 analysis
+# Onboard repositories to source/Helm analysis
 
 Read `docs/model-v2.md` for the supported syntax and property-source boundary.
 Use the repository's `scripts/analyze.mjs`; do not generate dependency lists to
-make the graph appear. The analyzer currently accepts synthetic inputs only.
+make the graph appear. Legacy v2 configs require synthetic inputs; the system
+manifest supports reviewed real inputs with `simulation: false`. For real or
+cross-repository work, also read `docs/model-composition.md` and
+[onboarding-checklist.md](onboarding-checklist.md). Never relabel synthetic inputs.
 
 ## Inspect and propose
 
@@ -91,3 +94,15 @@ changing candidate-specific conclusions.
 from maintained synthetic specimens and a complete manifest. It never overwrites
 an existing directory. This controlled regression does not establish autonomous
 onboarding accuracy; a separately prepared evaluation remains the next gate.
+
+`node scripts/helm-portability-fixture.mjs NEW_DESTINATION` adds a controlled
+variant with nested values, ordered common/environment overlays, helper-generated
+workload/Service names, implicit release namespaces, and shared plus separate chart
+directories. Analyze it with the existing cross-repo oracle; source relationships
+are unchanged. This checks Helm/config portability, not new parser semantics or
+autonomous onboarding accuracy. See `docs/helm-onboarding-validation.md`.
+
+The independent Runtime overlay now supports explicit one-shot capture/import.
+Candidate-specific observations remain a separate legacy contract. Do not add
+polling, scheduled acquisition, WATCH, SSE or WebSocket. Version differences are
+informational; cluster reads require explicit user authorization and approved scope.

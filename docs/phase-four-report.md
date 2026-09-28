@@ -59,6 +59,12 @@ running application rather than a mockup.
 
 ## Remaining boundaries and next work
 
+Historical milestone note: the separate Runtime inventory overlay and manual
+refresh are now implemented; candidate-specific legacy observations remain distinct.
+See [runtime enrichment](runtime-enrichment.md) and the
+[Helm onboarding validation](helm-onboarding-validation.md) for current progress.
+Acquisition is on demand only; polling is not a future milestone.
+
 The first system manifest has one revision vector per run. Different environment
 versions of the same repository require separate manifests. Remote cloning/fetching,
 automatic CD/release discovery and verified source-to-deployment bindings remain out

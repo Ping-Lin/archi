@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "enterprise.name" . }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      enterprise.example/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        enterprise.example/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: app
+          image: {{ .Values.workload.artifact | quote }}
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.workload.settings.profile | quote }}
+            - name: SPRING_APPLICATION_JSON
+              value: {{ .Values.workload.settings.clients | toJson | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "enterprise.endpoint" . }}
+spec:
+  selector:
+    enterprise.example/instance: {{ .Release.Name }}
+  ports:
+    - port: 8080
+      targetPort: 8080

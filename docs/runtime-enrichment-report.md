@@ -61,6 +61,9 @@ acceptance, target-filesystem crash recovery and representative load remain requ
 
 Next: run one explicitly approved, read-only capture against the intended cluster
 and compare known rollout scenarios. StatefulSet/DaemonSet semantics, init containers,
-endpoint availability, developer links and polling remain separate later slices.
+endpoint availability and developer links remain separate later slices.
+Update, 2026-09-28: polling is excluded by the accepted product decision, not a
+future backlog item. Runtime acquisition is explicit one-shot only; see the
+[current adoption guide](adoption-guide.md) for the implemented UI refresh path.
 
 See [configuration, QA matrix and operating contract](runtime-enrichment.md).

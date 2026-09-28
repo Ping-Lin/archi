@@ -1,5 +1,8 @@
 # Archi
 
+For existing-chart compatibility tests and the reviewed onboarding workflow, see
+[Helm portability validation](docs/helm-onboarding-validation.md).
+
 New here? Read [Using your existing charts](docs/adoption-guide.md) / [繁體中文使用指南](docs/adoption-guide.zh-TW.md), or click
 **How to use** in the app for the animated walkthrough. `/?view=acceptance` provides
 T0–T6 CD scenarios, offline acceptance-bundle import/export and capture comparison.
