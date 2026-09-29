@@ -114,6 +114,7 @@ export function resolveCandidates(
     const facts = [
       candidate.factId,
       properties.scopeFact,
+      ...(properties.referenceFactIds??[]),
       ...(targetFact ? [targetFact] : []),
       ...(candidate.endpointBinding ? endpointKeys(candidate.endpointBinding).flatMap(k=>properties.chains[k]??[]) : properties.chains[candidate.key] ?? []),
     ];

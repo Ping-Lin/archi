@@ -4,6 +4,10 @@ Status: implemented bounded adapters, not a complete Spring Boot configuration
 engine. Existing manifests retain `spring-properties/1` unless explicitly opted in.
 No cluster access, automatic discovery, LLM calls or polling are involved.
 
+Newer opt-ins: [spring-properties/4](configmap-environment.md) adds scoped rendered
+ConfigMap environment references; [ai-evidence/3](grpc-endpoints.md) adds bounded
+gRPC endpoint identities. The older-version limits below remain unchanged.
+
 ## Keep project keys, bind their meaning
 
 One project can use `gateway.peer.host` / `gateway.peer.port`, another can use
@@ -111,8 +115,9 @@ Use `system.json` instead of `accepted.json` to see the fully unreviewed AI case
 The inputs, reviews and source specimens are synthetic, not a real application run.
 
 Remaining work: broader placeholder semantics, explicit config
-data/profile loading semantics, ConfigMap/Secret references within an approved
-boundary, and protocol-specific gRPC endpoints. Real project validation is separate.
+data/profile loading semantics and secure Secret value resolution. Rendered
+ConfigMap environment references and bounded gRPC now have separate opt-in adapters
+linked above. Real project validation is separate.
 
 ## Opt-in placeholder resolution — spring-properties/3
 
@@ -168,7 +173,8 @@ limits are fail-closed, not silent truncation.
 Derived `property.placeholder` facts preserve the referenced keys, defaults used,
 supporting value-fact IDs and source evidence, including the reviewed scope policy
 that justifies absence. The UI has a **Resolved configuration references** panel.
-Imports, profile discovery, ConfigMap/Secret reads and gRPC remain separate gaps.
+Imports, profile discovery and Secret value reads remain gaps; newer ConfigMap
+and gRPC adapters are linked above and do not change /3 behavior.
 
 Run the synthetic scenario:
 

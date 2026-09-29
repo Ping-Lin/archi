@@ -264,3 +264,23 @@ TLS／mTLS、DNS 實際結果及連通性都保持 unknown；不會發 request�
 可用 `node scripts/grpc-fixture.mjs artifacts/grpc-demo` 建立新模擬資料，
 再分析其 `accepted.json`：QA 有兩個明確標示為模擬的 review，production 沒有。
 完整設定與限制見 [gRPC endpoints](grpc-endpoints.md)。
+
+### ConfigMap 環境設定
+
+instance 的 `configuration.adapter` 選 `spring-properties/4`，即可解析
+Helm render 中的 `configMapKeyRef` 與 `envFrom.configMapRef`（含 prefix）。
+每個應用環境變數仍需 `environmentBindings` 對應到專案自己的 property key。
+解析只使用相同 cluster／namespace 的精確名稱；不會查詢 Kubernetes。
+
+多個 envFrom 依順序覆寫，explicit env 再覆寫它們，最後才套用 application JSON
+與 placeholder。缺少 ConfigMap／key，即使標成 optional，也會保持 unknown，
+因為「render 沒看到」不代表實際環境沒有。
+
+畫面的 **Rendered configuration references** 會列出來源與狀態。
+Secret reference 會標示 opaque，不讀取內容；標準 Secret 文件在新匯出中會遮蔽
+資料及其他 metadata。這不是通用機密掃描器，ConfigMap／literal env 仍不可放機密。
+既有匯出不會自動清除；Secret 值解析、掛載檔案與 ConfigData imports 尚未支援。
+
+模擬案例：`node scripts/configmap-fixture.mjs artifacts/configmap-demo`。
+分析該資料夾的 `accepted.json` 後，可查看 QA 的設定來源與 gRPC 關係。
+詳細設定見 [ConfigMap environment](configmap-environment.md)。

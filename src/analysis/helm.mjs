@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { parseAllDocuments } from "yaml";
+import { parseAllDocuments, stringify } from "yaml";
 import { hash, identify } from "./contract.mjs";
 
 const resourceTypes = {
@@ -129,11 +129,13 @@ export function renderHelm(
     );
   if (first.stdout !== second.stdout)
     throw new Error("NONDETERMINISTIC_HELM: repeated renders differ");
+  const parsed=parseManifest(first.stdout,env,ledger),manifest=redactSecretManifests(first.stdout);
+  if(manifest!==first.stdout)parsed.diagnostics.push({code:'SECRET_EXPORT_REDACTED',message:'Standard Secret documents are exported as identities only; render hashes identify original bytes, not redacted exports'});
   return {
-    ...parseManifest(first.stdout, env, ledger),
+    ...parsed,
     version,
     outputHash: hash(first.stdout),
-    manifest: first.stdout,
+    manifest,
     coverage: {
       collector: "helm",
       status: "complete",
@@ -141,4 +143,22 @@ export function renderHelm(
       meaning: "Supported kinds in local render; no live inventory",
     },
   };
+}
+
+// Export identities only for standard Secrets, including nested Kubernetes Lists.
+// This is not a general detector for credentials placed in other resource kinds.
+export function redactSecretManifests(text) {
+  const docs=parseAllDocuments(text,{uniqueKeys:true});
+  if(docs.some(d=>d.errors.length))throw Error('Cannot export invalid rendered YAML');
+  let changed=false;
+  const redact=value=>{
+    if(value?.apiVersion==='v1'&&value.kind==='Secret'){
+      changed=true;
+      return {apiVersion:'v1',kind:'Secret',metadata:{name:value.metadata?.name??null,namespace:value.metadata?.namespace??null},'archi.redacted':true};
+    }
+    if(value?.kind==='List'&&Array.isArray(value.items))return {...value,items:value.items.map(redact)};
+    return value;
+  };
+  const values=docs.map(d=>redact(d.toJS({maxAliasCount:100})));
+  return changed?values.map(v=>stringify(v)).join('---\n'):text;
 }

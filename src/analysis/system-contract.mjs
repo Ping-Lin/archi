@@ -35,7 +35,7 @@ export const bindingSchema = object({
 });
 // Optional, versioned configuration policy. Omission retains the v1 adapter.
 bindingSchema.properties.configuration = object({
-  adapter: {enum:['spring-properties/2','spring-properties/3']},
+  adapter: {enum:['spring-properties/2','spring-properties/3','spring-properties/4']},
   environmentBindings: list(object({name:{...text,pattern:'^[A-Za-z_][A-Za-z0-9_]*$'},key:text})),
 });
 export const systemSchema = object({

@@ -1,5 +1,8 @@
 # System composition — archi/system-v1alpha1
 
+`spring-properties/4` adds scoped rendered ConfigMap environment resolution and
+opaque Secret references. See [ConfigMap bindings](configmap-environment.md).
+
 Additive `ai-evidence/3` supports reviewed gRPC host/port and DNS bindings through
 `grpc-endpoint/1`. Instance endpoints can explicitly declare `gRPC`; identity is
 still scoped to rendered Service/Deployment evidence. Transport security is

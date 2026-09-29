@@ -230,7 +230,7 @@ export function resolveProperties(files, env, resources, source, ledger, options
     chains = Object.create(null),
     diagnostics = [];
   let complete = env.propertiesComplete;
-  const add = (mapping, locator, type) => {
+  const add = (mapping, locator, type, supportingEvidence = [], supportingFactIds = []) => {
     const evidenceId = ledger.recordEvidence({
       type,
       locator,
@@ -240,8 +240,8 @@ export function resolveProperties(files, env, resources, source, ledger, options
       const factId = ledger.fact(
         "property.value",
         key,
-        { value, precedence: chains[key]?.length ?? 0, locator },
-        [evidenceId],
+        { value, precedence: chains[key]?.length ?? 0, locator, ...(supportingFactIds.length?{supportingFactIds}:{}) },
+        [...new Set([evidenceId,...supportingEvidence])],
       );
       (chains[key] ??= []).push(factId);
       values[key] = value;
@@ -297,7 +297,7 @@ export function resolveProperties(files, env, resources, source, ledger, options
   }
   const container = containers.length === 1 ? containers[0] : null;
   if (
-    container?.envFrom?.length ||
+    (!options.environmentResolver && container?.envFrom?.length) ||
     container?.args?.length ||
     container?.command?.length ||
     container?.volumeMounts?.length
@@ -309,7 +309,9 @@ export function resolveProperties(files, env, resources, source, ledger, options
         "envFrom, command/args, or mounted configuration requires another property adapter",
     });
   }
-  const variables = [...(container?.env ?? [])];
+  const resolvedEnvironment=options.environmentResolver?.(container,deployment,resources,env,ledger);
+  if(resolvedEnvironment){diagnostics.push(...resolvedEnvironment.diagnostics);if(!resolvedEnvironment.complete)complete=false;}
+  const variables = resolvedEnvironment?.variables ?? [...(container?.env ?? [])];
   // Explicit env bindings override files; application JSON overrides both.
   if (options.environmentBindings) variables.sort((a,b) => Number(a.name==='SPRING_APPLICATION_JSON')-Number(b.name==='SPRING_APPLICATION_JSON'));
   for (const binding of options.environmentBindings ?? []) {
@@ -330,6 +332,7 @@ export function resolveProperties(files, env, resources, source, ledger, options
           (options.flatten ?? flatten)(JSON.parse(variable.value)),
           `${deployment.key}/env/SPRING_APPLICATION_JSON`,
           "helm_render",
+          variable._evidenceIds,variable._referenceFactIds,
         );
       } catch (error) {
         complete = false;
@@ -354,7 +357,7 @@ export function resolveProperties(files, env, resources, source, ledger, options
       }
     } else if (options.environmentBindings?.some(b=>b.name===variable.name) && typeof variable.value==='string' && !variable.valueFrom) {
       const binding=options.environmentBindings.find(b=>b.name===variable.name);
-      add({[binding.key]:variable.value},`${deployment.key}/env/${variable.name}`,'helm_render');
+      add({[binding.key]:variable.value},variable._locator??`${deployment.key}/env/${variable.name}`,'helm_render',variable._evidenceIds,variable._referenceFactIds);
     } else {
       complete = false;
       diagnostics.push({
@@ -376,7 +379,7 @@ export function resolveProperties(files, env, resources, source, ledger, options
     contentHash: hash({
       profiles: env.profiles,
       propertiesComplete: env.propertiesComplete,
-      ...(options.environmentBindings ? {adapter:options.placeholders?'spring-properties/3':'spring-properties/2',environmentBindings:options.environmentBindings,propertyFiles:env.propertyFiles} : {}),
+      ...(options.environmentBindings ? {adapter:options.adapter??(options.placeholders?'spring-properties/3':'spring-properties/2'),environmentBindings:options.environmentBindings,propertyFiles:env.propertyFiles} : {}),
     }),
   });
   if(options.placeholders) {
@@ -391,11 +394,12 @@ export function resolveProperties(files, env, resources, source, ledger, options
     env.id,
     {
       complete,
+      ...(resolvedEnvironment?{referenceFactIds:resolvedEnvironment.factIds}:{}),
       profiles: env.profiles,
       assumption:
         "Reviewed closed property-source scope; not live configuration",
     },
     [policyEvidence],
   );
-  return { values, chains, complete, scopeFact, diagnostics };
+  return { values, chains, complete, scopeFact, diagnostics, ...(resolvedEnvironment?{referenceFactIds:resolvedEnvironment.factIds}:{}) };
 }
