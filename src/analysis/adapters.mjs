@@ -3,6 +3,7 @@ import { renderHelm } from "./helm.mjs";
 import Ajv from "ajv";
 import { extractAiCandidates } from './ai-candidates.mjs';
 import { parsePropertyFile, flattenProperties } from './property-files.mjs';
+import { applyPlaceholders } from './placeholders.mjs';
 
 const records = { type: "array", items: { type: "object" } };
 const coverage = {
@@ -20,6 +21,7 @@ const result = (required, properties) => ({
   properties: { ...properties, diagnostics: records },
 });
 export const adapterResultSchemas = Object.freeze({
+  'spring-properties/3':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
   'ai-evidence/2':result(['candidates','coverage'],{candidates:records,coverage}),
   'spring-properties/2':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
   'ai-evidence/1':result(['candidates','coverage'],{candidates:records,coverage}),
@@ -70,6 +72,7 @@ export function validateAdapterResult(id, result) {
 
 // Closed, versioned built-ins. A manifest selects an adapter, never executable code.
 export const adapterContracts = Object.freeze({
+  'spring-properties/3':Object.freeze({input:'v2-config-scope + exact-key-placeholders',output:'effective-values + transitive-evidence + diagnostics',engine:'closed-scope-placeholders/1'}),
   'ai-evidence/2':Object.freeze({input:'pinned-source + endpoint-binding-bundle + scoped-declared-reviews',output:'candidates + coverage + diagnostics',engine:'evidence-validation/2'}),
   'spring-properties/2':Object.freeze({input:'ordered-properties-or-yaml + explicit-env-bindings + application-json + bound-workload',output:'values + chains + scopeFact + diagnostics',engine:'bounded-property-files/1'}),
   'ai-evidence/1':Object.freeze({input:'pinned-source + candidate-bundle + scoped-declared-reviews',output:'candidates + coverage + diagnostics',engine:'evidence-validation/1'}),
@@ -99,8 +102,9 @@ export function runAdapter(id, context) {
       context.ledger,
     );
   else if (id === 'ai-evidence/1' || id === 'ai-evidence/2') result=extractAiCandidates(context);
-  else if (id === 'spring-properties/2') result=resolveProperties(context.files,context.env,context.resources,context.source,context.ledger,{
+  else if (id === 'spring-properties/2' || id === 'spring-properties/3') result=resolveProperties(context.files,context.env,context.resources,context.source,context.ledger,{
     parseFile:parsePropertyFile,flatten:flattenProperties,environmentBindings:context.env.environmentBindings ?? [],
+    ...(id==='spring-properties/3'?{placeholders:applyPlaceholders}:{}),
   });
   else if (id === "spring-properties/1")
     result = resolveProperties(

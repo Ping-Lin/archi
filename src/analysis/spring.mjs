@@ -248,7 +248,8 @@ export function resolveProperties(files, env, resources, source, ledger, options
       if (
         key.startsWith("spring.config.") ||
         key.startsWith("spring.profiles.") ||
-        value.includes("${") ||
+        (!options.placeholders && value.includes("${")) ||
+        (options.placeholders && value.includes('$(')) ||
         value.includes("#{")
       ) {
         complete = false;
@@ -375,9 +376,16 @@ export function resolveProperties(files, env, resources, source, ledger, options
     contentHash: hash({
       profiles: env.profiles,
       propertiesComplete: env.propertiesComplete,
-      ...(options.environmentBindings ? {adapter:'spring-properties/2',environmentBindings:options.environmentBindings,propertyFiles:env.propertyFiles} : {}),
+      ...(options.environmentBindings ? {adapter:options.placeholders?'spring-properties/3':'spring-properties/2',environmentBindings:options.environmentBindings,propertyFiles:env.propertyFiles} : {}),
     }),
   });
+  if(options.placeholders) {
+    if(complete) {
+      const failures=options.placeholders(values,chains,ledger,policyEvidence,
+        (options.environmentBindings??[]).filter(b=>b.name!==b.key).map(b=>b.name));
+      diagnostics.push(...failures);if(failures.length)complete=false;
+    }else diagnostics.push({code:'PLACEHOLDER_SCOPE_INCOMPLETE',message:'Placeholder evaluation skipped: reviewed configuration scope is incomplete; defaults do not prove absence'});
+  }
   const scopeFact = ledger.fact(
     "property.scope",
     env.id,

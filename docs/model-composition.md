@@ -17,6 +17,9 @@ Adapters are `spring-explicit-bean/1`, `ai-evidence/1`, `spring-properties/1` an
 Additive opt-ins `ai-evidence/2` and `spring-properties/2` support structured endpoint
 bindings and ordered properties/YAML with explicit env mappings. See
 [configuration bindings](configuration-bindings.md) for schemas and limitations.
+`spring-properties/3` additionally resolves bounded exact-key placeholders after
+overrides, with transitive provenance and explicit default-use evidence. This is
+an opt-in closed-source-scope contract; it does not implement all Spring semantics.
 The opt-in [AI candidate adapter](ai-candidates.md) accepts evidence-bound proposals
 with scoped operator reviews; it is not a general language parser. Unreviewed or
 rejected proposals never create edges. Property and endpoint semantics retain their

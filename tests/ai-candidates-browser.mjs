@@ -3,6 +3,7 @@ import {mkdtemp,rm,readFile} from 'node:fs/promises';
 import os from 'node:os';import path from 'node:path';import assert from 'node:assert/strict';
 import {createAiFixture} from '../scripts/ai-candidates-fixture.mjs';
 import {createConfigurationFixture} from '../scripts/configuration-fixture.mjs';
+import {createPlaceholderFixture} from '../scripts/placeholder-fixture.mjs';
 import {analyzeSystem} from '../src/analysis/system-run.mjs';
 const {chromium}=createRequire(import.meta.url)('playwright');
 const root=await mkdtemp(path.join(os.tmpdir(),'archi-ai-browser-'));
@@ -44,6 +45,12 @@ try{
  await page.getByRole('tab',{name:'Connections & evidence'}).click();
  await page.getByLabel('Candidate filter',{exact:true}).selectOption('accepted');
  assert.match(await page.getByRole('region',{name:'Endpoint configuration binding'}).innerText(),/gateway.peer.host[\s\S]*gateway.peer.port[\s\S]*8080[\s\S]*http:\/\/api.sales-qa/);
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ const placeholderFixture=await createPlaceholderFixture(path.join(root,'placeholders'));
+ displayed=await analyzeSystem(placeholderFixture.root,'accepted.json');await page.reload();
+ await page.getByRole('tab',{name:'Connections & evidence'}).click();
+ await page.getByLabel('Candidate filter',{exact:true}).selectOption('accepted');
+ assert.match(await page.getByRole('region',{name:'Placeholder resolution'}).innerText(),/gateway.peer.port[\s\S]*8080[\s\S]*preferred.port/);
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  assert.deepEqual(errors,[]);console.log('AI candidate browser passed: proposal visibility, review provenance, scoped edges and export');
 }finally{await browser?.close();await rm(root,{recursive:true,force:true});}

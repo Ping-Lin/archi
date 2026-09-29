@@ -85,7 +85,7 @@ UTF-8 versus ISO-8859-1 loading policy. Duplicate or empty keys, malformed escap
 and Spring multi-document separators are rejected. YAML must be a single mapping;
 arrays, flattened-key collisions and multi-document configuration are unsupported.
 
-Placeholders such as `${HOST:default}`, expressions, `spring.config.*` imports,
+In v2, placeholders such as `${HOST:default}`, expressions, `spring.config.*` imports,
 `spring.profiles.*`, automatic active-profile file selection, secrets and custom
 loaders are not implemented. They make the scope incomplete rather than silently
 falling back to another value. Explicit reviewed file lists can represent a known
@@ -110,6 +110,75 @@ candidate as unreviewed. The port chain deliberately changes 7000 → 8000 → 9
 Use `system.json` instead of `accepted.json` to see the fully unreviewed AI case.
 The inputs, reviews and source specimens are synthetic, not a real application run.
 
-Remaining work: placeholder resolution with dependency provenance, explicit config
+Remaining work: broader placeholder semantics, explicit config
 data/profile loading semantics, ConfigMap/Secret references within an approved
 boundary, and protocol-specific gRPC endpoints. Real project validation is separate.
+
+## Opt-in placeholder resolution — spring-properties/3
+
+Set the instance's `configuration.adapter` to `spring-properties/3` to expand
+placeholders after the supported file/env/JSON overrides have been applied.
+Existing v1/v2 adapters retain their behavior. This is an explicit closed-scope,
+exact-key contract, **not** a complete implementation of Spring Environment.
+
+```properties
+gateway.peer.host=${HOST:orders}
+gateway.peer.port=${port.alias:8080}
+port.alias=${PORT:8080}
+```
+
+To use rendered `HOST` and `PORT` values with these exact references, declare:
+
+```json
+{
+  "adapter": "spring-properties/3",
+  "environmentBindings": [
+    {"name": "HOST", "key": "HOST"},
+    {"name": "PORT", "key": "PORT"}
+  ]
+}
+```
+
+The evaluator reads only the captured effective property map, not `process.env`,
+system properties, another instance, or a cluster. A variable mapped to another
+key is not silently remapped again for placeholders: referencing its unavailable
+original name remains unknown, even with a default. Missing declared env bindings
+also keep the scope incomplete.
+
+Supported: `${key}`, `${key:default}`, multiple substitutions within a string,
+transitive references and nested defaults such as `${primary:${backup:8080}}`.
+Defaults apply only to absent keys; an empty value is present. Unused default
+references are not evaluated. Placeholder-bearing lower-priority values remain
+in the history but are not evaluated once overwritten.
+
+Unsupported or ambiguous: dynamic placeholder names, literal braces inside
+placeholder expressions, escaped placeholders,
+SpEL, Kubernetes `$(VAR)` expansion, random/framework property providers and
+relaxed-name aliases. Potential aliases in the captured keys cause an explicit
+unknown rather than guessed precedence or a misleading default. Names are matched
+exactly, including case. This contract assumes the approved source/key inventory
+is complete; it does not discover all application configuration sources.
+
+Evaluation is skipped when the source scope is incomplete. Cycles, missing keys,
+unsupported syntax and bounded expansion failures produce diagnostics and prevent
+dependency edges. Limits: 2048 properties, 32 dependency/nesting depth, 65536
+characters per expanded value, 2 Mi characters overall, 50000 work units. These
+limits are fail-closed, not silent truncation.
+
+Derived `property.placeholder` facts preserve the referenced keys, defaults used,
+supporting value-fact IDs and source evidence, including the reviewed scope policy
+that justifies absence. The UI has a **Resolved configuration references** panel.
+Imports, profile discovery, ConfigMap/Secret reads and gRPC remain separate gaps.
+
+Run the synthetic scenario:
+
+```bash
+node scripts/placeholder-fixture.mjs artifacts/placeholder-demo
+npm run analyze -- --root artifacts/placeholder-demo --system accepted.json --out ../analysis
+npm run dev
+```
+
+QA resolves the reviewed candidate to orders. Its env port 9000 is overridden by
+an application-JSON reference that falls back to 8080. Production stays unreviewed.
+The tests also replace that reference with a cycle and require an unknown result,
+not an edge. No running application or real deployment is claimed by this fixture.

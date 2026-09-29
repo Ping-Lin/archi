@@ -219,8 +219,12 @@ Replay 需要相同的 Runtime source files、package-lock 與已安裝 dependen
 [configuration binding 設定](configuration-bindings.md)。`spring-properties/2`
 支援有界的 `.properties`／YAML 與明確環境變數 mapping；`ai-evidence/2`
 讓 template 描述完整 URL key 或分開的 host／port keys，不要求修改專案格式。
-這不是完整 Spring Boot 設定引擎：placeholder、Config Data imports、gRPC 等
-尚未支援，遇到未知來源仍不會產生確定連線。完整可執行範例見該文件。
+新增 `spring-properties/3` 可解析有界的 `${key}`／`${key:default}` 與巢狀預設值，
+在設定覆蓋完成後才展開，並在畫面顯示引用與預設值的證據。
+這不是完整 Spring Boot 設定引擎：動態 placeholder key、relaxed binding、
+Config Data imports、ConfigMap／Secret 引用、gRPC 仍未完成。
+遇到循環或來源不完整會維持 unknown，不會套用預設值來掩蓋缺口。
+完整設定與可執行範例見該文件。
 
 AI 候選檔 commit 並固定 revision 後，可用以下指令列出各環境的待審項目；
 不需要執行 Helm 或連線 cluster：
