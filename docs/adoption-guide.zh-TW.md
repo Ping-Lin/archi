@@ -246,3 +246,21 @@ candidate ID、完整 hash、environment、instance、reviewer 與 reason。
 畫面 **Connections & evidence** 現在可搜尋 client、service、設定 key 或 reviewer，
 也可篩選待審、接受、拒絕與需要調查的候選。右側直接顯示原始碼引用與 commit；
 畫面是唯讀，篩選不會修改關係圖或送出審核。
+
+### gRPC 設定（需明確選用新版 adapter）
+
+source 使用 `ai-evidence/3`，candidate bundle 使用
+`archi/ai-candidates-v1alpha3`，protocol 填 `gRPC`。
+endpoint 可填 `host-port`（指定專案自己的 hostKey／portKey），或
+`grpc-dns`（指定 key，其值需為 `dns:///host:port`）。
+目標 instance 的 endpoint 也需宣告 `gRPC` 及對應 Service port；
+cluster、namespace、selector、來源引用與分環境 review 仍需符合。
+設定完整且已審核才可能產生 edge，舊版 adapter 不會自動改變行為。
+
+畫面上的 `grpc://host:port` 只是內部比對識別值，不是要貼進程式的 target。
+TLS／mTLS、DNS 實際結果及連通性都保持 unknown；不會發 request、連 cluster
+或 polling。目前不支援 xDS、自訂 resolver、IPv6 或外部 gRPC target。
+
+可用 `node scripts/grpc-fixture.mjs artifacts/grpc-demo` 建立新模擬資料，
+再分析其 `accepted.json`：QA 有兩個明確標示為模擬的 review，production 沒有。
+完整設定與限制見 [gRPC endpoints](grpc-endpoints.md)。

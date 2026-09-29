@@ -4,6 +4,7 @@ import os from 'node:os';import path from 'node:path';import assert from 'node:a
 import {createAiFixture} from '../scripts/ai-candidates-fixture.mjs';
 import {createConfigurationFixture} from '../scripts/configuration-fixture.mjs';
 import {createPlaceholderFixture} from '../scripts/placeholder-fixture.mjs';
+import {createGrpcFixture} from '../scripts/grpc-fixture.mjs';
 import {analyzeSystem} from '../src/analysis/system-run.mjs';
 const {chromium}=createRequire(import.meta.url)('playwright');
 const root=await mkdtemp(path.join(os.tmpdir(),'archi-ai-browser-'));
@@ -52,5 +53,15 @@ try{
  await page.getByLabel('Candidate filter',{exact:true}).selectOption('accepted');
  assert.match(await page.getByRole('region',{name:'Placeholder resolution'}).innerText(),/gateway.peer.port[\s\S]*8080[\s\S]*preferred.port/);
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
- assert.deepEqual(errors,[]);console.log('AI candidate browser passed: proposal visibility, review provenance, scoped edges and export');
+ const grpcFixture=await createGrpcFixture(path.join(root,'grpc'));
+ displayed=await analyzeSystem(grpcFixture.root,'accepted.json');await page.reload();
+ await page.getByRole('tab',{name:'Connections & evidence'}).click();
+ await page.getByLabel('Candidate filter',{exact:true}).selectOption('accepted');
+ assert.equal(await page.locator('.candidate-card').count(),2);
+ assert.match(await page.getByRole('region',{name:'Endpoint configuration binding'}).innerText(),/grpc:\/\/api.sales-qa[\s\S]*Transport security: unknown/);
+ const grpcDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Export analysis'}).click();
+ const grpcExport=JSON.parse(await readFile(await(await grpcDownload).path(),'utf8'));
+ assert.equal(grpcExport.dependencies.filter(e=>e.protocol==='gRPC'&&e.transportSecurity==='unknown').length,2);
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ assert.deepEqual(errors,[]);console.log('AI candidate browser passed: proposal visibility, review provenance, scoped edges, gRPC security caveats and export');
 }finally{await browser?.close();await rm(root,{recursive:true,force:true});}

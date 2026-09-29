@@ -9,6 +9,8 @@ For differently named configuration keys, `.properties` inputs, environment
 bindings and split host/port, use the additive `ai-evidence/2` and
 `spring-properties/2` contracts in [configuration bindings](configuration-bindings.md).
 The v1 workflow and limits documented below remain unchanged.
+For bounded gRPC DNS and host/port bindings, opt in separately to
+[`ai-evidence/3`](grpc-endpoints.md). This does not expand the older adapters.
 
 ## Try the complete synthetic example
 

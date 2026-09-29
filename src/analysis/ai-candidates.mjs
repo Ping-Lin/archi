@@ -1,6 +1,6 @@
 import Ajv from 'ajv';
 import { hash, identify } from './contract.mjs';
-import { endpointBindingSchema, endpointKeys } from './endpoint-binding.mjs';
+import { endpointBindingSchema, endpointBindingSchemaV3, endpointKeys } from './endpoint-binding.mjs';
 
 const text = {type:'string',minLength:1,maxLength:2048};
 const digest = {type:'string',pattern:'^[a-f0-9]{64}$'};
@@ -25,13 +25,18 @@ delete candidateV2.properties.endpointKey;
 candidateV2.properties.endpoint=endpointBindingSchema;
 candidateV2.required=candidateV2.required.filter(k=>k!=='endpointKey').concat('endpoint');
 const validateV2=new Ajv({allErrors:true}).compile(aiCandidateSchemaV2);
+export const aiCandidateSchemaV3=structuredClone(aiCandidateSchemaV2);
+aiCandidateSchemaV3.properties.schemaVersion={const:'archi/ai-candidates-v1alpha3'};
+aiCandidateSchemaV3.properties.candidates.items.properties.endpoint=endpointBindingSchemaV3;
+const validateV3=new Ajv({allErrors:true}).compile(aiCandidateSchemaV3);
 export const candidateHash = (bundle,candidate) => hash({schemaVersion:bundle.schemaVersion,simulation:bundle.simulation,service:bundle.service,candidate});
 export function verifyAiBundle(bundle,{service,simulation,files,provenance}) {
-  const validator=service.source.adapter==='ai-evidence/2'?validateV2:validate;
+  const validator=service.source.adapter==='ai-evidence/3'?validateV3:service.source.adapter==='ai-evidence/2'?validateV2:validate;
   if (!validator(bundle)) throw Error('Invalid AI candidate bundle: '+JSON.stringify(validator.errors));
   if (bundle.service!==service.id || bundle.simulation!==simulation) throw Error('AI candidate service or input mode mismatch');
   const allowed = new Set(service.source.files.map(f=>`${f.repository}/${f.path}`)), ids=new Set();
   for (const c of bundle.candidates) {
+    if(c.endpoint?.kind==='grpc-dns'&&c.protocol!=='gRPC')throw Error('grpc-dns binding requires gRPC protocol');
     if (ids.has(c.id)) throw Error('Duplicate AI candidate id'); ids.add(c.id);
     for (const e of c.evidence) {
       const key=`${e.repository}/${e.path}`, p=provenance[key], content=files.get(key);
@@ -57,7 +62,8 @@ export function extractAiCandidates(context) {
     const status=review?.decision??'unreviewed';
     const unsupported=[...c.unknowns];
     if(status!=='accepted')unsupported.push(status==='rejected'?'Reviewer rejected this AI candidate':'AI semantics unreviewed; matching evidence bytes do not prove interpretation');
-    if(!['HTTP','HTTPS','TCP'].includes(c.protocol))unsupported.push('Protocol needs a supported endpoint adapter; no protocol conversion is inferred');
+    const grpc=service.source.adapter==='ai-evidence/3'&&c.protocol==='gRPC'&&['host-port','grpc-dns'].includes(c.endpoint?.kind);
+    if(!['HTTP','HTTPS','TCP'].includes(c.protocol)&&!grpc)unsupported.push('Protocol needs a supported endpoint adapter; no protocol conversion is inferred');
     const evidenceIds=[bundleEvidence,...c.evidence.map(e=>ledger.recordEvidence({type:'ai_source_reference',locator:`${e.repository}/${e.path}`,contentHash:e.contentHash,
       provenance:{repository:e.repository,revision:e.revision,path:e.path,contentHash:e.contentHash},startLine:e.startLine,endLine:e.endLine,quote:e.quote}))];
     if(review)evidenceIds.push(ledger.recordEvidence({type:'declared_candidate_review',locator:`system.manifest/services/${service.id}/reviews`,contentHash:hash(review),review}));
@@ -66,6 +72,7 @@ export function extractAiCandidates(context) {
     return {id,name:c.name,source:source.service,file:`${c.evidence[0].repository}/${c.evidence[0].path}`,line:c.evidence[0].startLine,
       key:c.endpoint ? endpointKeys(c.endpoint).join(' + ') : c.endpointKey,
       ...(c.endpoint?{endpointBinding:c.endpoint}:{}),conditions:c.conditions,unsupported,extraction,
+      ...(grpc?{endpointAdapter:'grpc-endpoint/1',transportSecurity:'unknown'}:{}),
       factId:ledger.fact('client.candidate',id,{name:c.name,...(c.endpoint?{endpointBinding:c.endpoint}:{key:c.endpointKey}),conditions:c.conditions,unsupported,extraction},evidenceIds)};
   });
   return {candidates,diagnostics:[{code:'AI_SEMANTICS_REVIEW',message:'AI candidates are evidence-bound proposals. Accepted reviews are local operator assertions, not authenticated approval or parser verification.'}],

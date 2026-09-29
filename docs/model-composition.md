@@ -1,5 +1,10 @@
 # System composition — archi/system-v1alpha1
 
+Additive `ai-evidence/3` supports reviewed gRPC host/port and DNS bindings through
+`grpc-endpoint/1`. Instance endpoints can explicitly declare `gRPC`; identity is
+still scoped to rendered Service/Deployment evidence. Transport security is
+unknown, not inferred from TCP or the target string. See [gRPC endpoints](grpc-endpoints.md).
+
 Status: implemented pinned-input scope, with maintained synthetic fixtures. This extends the existing analysis pipeline;
 the original v2 single-repository configurations and their CLI remain supported.
 

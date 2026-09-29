@@ -1,6 +1,6 @@
 import { hash, identify, VERSION, assertSnapshot } from "./contract.mjs";
 import { resourceKey } from "./helm.mjs";
-import { endpointKeys, resolveEndpointBinding } from './endpoint-binding.mjs';
+import { endpointKeys, resolveEndpointBinding, resolveGrpcEndpoint } from './endpoint-binding.mjs';
 
 function endpoint(value) {
   try {
@@ -158,12 +158,13 @@ export function resolveCandidates(
         candidate.extraction ? 'Operator accepted the AI extraction; supported conditions are satisfied. This is a declared review, not parser verification or execution proof.' : "Explicit bean registration and supported conditions are satisfied; execution is not proven",
       );
     const value = candidate.endpointBinding ? Object.fromEntries(endpointKeys(candidate.endpointBinding).map(k=>[k,properties.values[k]??null])) : properties.values[candidate.key] ?? null;
-    let url = properties.complete ? (candidate.endpointBinding ? resolveEndpointBinding(candidate.endpointBinding,candidate.extraction.protocol,properties.values) : endpoint(value)) : null;
+    let url = properties.complete ? (candidate.endpointAdapter==='grpc-endpoint/1' ? resolveGrpcEndpoint(candidate.endpointBinding,properties.values) : candidate.endpointBinding ? resolveEndpointBinding(candidate.endpointBinding,candidate.extraction.protocol,properties.values) : endpoint(value)) : null;
     if(candidate.endpointBinding) {
       const bindingEvidence=[...new Set(ledger.facts.filter(f=>facts.includes(f.id)).flatMap(f=>f.evidenceIds))];
-      facts.push(ledger.fact('endpoint.binding',candidate.id,{binding:candidate.endpointBinding,protocol:candidate.extraction.protocol,url},bindingEvidence));
+      facts.push(ledger.fact('endpoint.binding',candidate.id,{binding:candidate.endpointBinding,protocol:candidate.extraction.protocol,url,...(candidate.endpointAdapter?{adapter:candidate.endpointAdapter,transportSecurity:'unknown'}:{})},bindingEvidence));
       reasons.push(url?'Endpoint constructed from explicitly bound configuration keys':'Endpoint binding has missing, invalid or unsupported values');
     }
+    if(candidate.endpointAdapter==='grpc-endpoint/1')reasons.push('gRPC host/port identity only; DNS answers, TLS/mTLS, authority overrides, load balancing and live reachability are unverified');
     if(candidate.extraction && (!url || new URL(url).protocol !== candidate.extraction.protocol.toLowerCase()+':')) {
       url=null; if(eligibility !== 'disabled') eligibility='unknown'; reasons.push('AI-declared protocol and supported configured endpoint do not agree');
     }
@@ -255,7 +256,7 @@ export function resolveCandidates(
       [...new Set(facts)],
       outcome,
       reasons,
-      targetResolver ? (candidate.endpointBinding ? 'endpoint-binding/1 + deployment-endpoint/1' : "deployment-endpoint/1") : undefined,
+      targetResolver ? (candidate.endpointAdapter==='grpc-endpoint/1'?'grpc-endpoint/1 + deployment-endpoint/1':candidate.endpointBinding ? 'endpoint-binding/1 + deployment-endpoint/1' : "deployment-endpoint/1") : undefined,
     );
     const resolved = {
       ...candidate,
@@ -281,7 +282,8 @@ export function resolveCandidates(
         source: candidate.source,
         target: target.id,
         targetKind: target.kind,
-        protocol: new URL(target.url).protocol.replace(":", "").toUpperCase(),
+        protocol: new URL(target.url).protocol==='grpc:'?'gRPC':new URL(target.url).protocol.replace(":", "").toUpperCase(),
+        ...(candidate.endpointAdapter?{endpointAdapter:candidate.endpointAdapter,transportSecurity:'unknown'}:{}),
         candidateId: candidate.id,
         resolutionId,
         ...(candidate.extraction?{extraction:candidate.extraction}:{}),

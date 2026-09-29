@@ -18,8 +18,8 @@ try {
     const evidence=service.source.files.slice(0,16).map(f=>{const key=`${f.repository}/${f.path}`,p=inputs.provenance[key];if(!p)throw Error('Service must be bound in an environment');
       const line=inputs.files.get(key).split(/\r?\n/).findIndex(l=>l.trim());if(line<0)throw Error('Empty source file');
       return {...p,startLine:line+1,endLine:line+1,quote:inputs.files.get(key).split(/\r?\n/)[line]};});
-    const v2=service.source.adapter==='ai-evidence/2';
-    await createJson(path.resolve(options['--out']),{schemaVersion:v2?'archi/ai-candidates-v1alpha2':'archi/ai-candidates-v1alpha1',simulation:inputs.manifest.simulation,service:service.id,
+    const v2=['ai-evidence/2','ai-evidence/3'].includes(service.source.adapter);
+    await createJson(path.resolve(options['--out']),{schemaVersion:service.source.adapter==='ai-evidence/3'?'archi/ai-candidates-v1alpha3':v2?'archi/ai-candidates-v1alpha2':'archi/ai-candidates-v1alpha1',simulation:inputs.manifest.simulation,service:service.id,
       candidates:[{id:'replace-client-id',name:'REPLACE_WITH_CLIENT_SYMBOL',...(v2?{endpoint:{kind:'url-key',key:'REPLACE_WITH_CONFIG_KEY'}}:{endpointKey:'REPLACE_WITH_CONFIG_KEY'}),protocol:'unknown',conditions:[],
         unknowns:['Template only: inspect source, replace placeholders and cite the relevant lines.'],evidence}]});
     console.log('Template saved. Replace placeholders and evidence ranges; no semantics are approved.');

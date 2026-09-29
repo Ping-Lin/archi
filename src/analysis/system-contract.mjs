@@ -24,7 +24,7 @@ export const bindingSchema = object({
       object({
         name: dnsLabel,
         port: { type: "integer", minimum: 1, maximum: 65535 },
-        protocol: { enum: ["HTTP", "HTTPS", "TCP"] },
+        protocol: { enum: ["HTTP", "HTTPS", "TCP", "gRPC"] },
         kind: { enum: ["service", "gateway"] },
       }),
     ],
@@ -63,7 +63,7 @@ export const systemSchema = object({
           files: { ...list(fileRef), minItems: 1 },
           clientTypes: { ...unique(text), minItems: 1 },
         }),object({
-        adapter:{enum:['ai-evidence/1','ai-evidence/2']},
+        adapter:{enum:['ai-evidence/1','ai-evidence/2','ai-evidence/3']},
         files:{...list(fileRef),minItems:1},
         candidateFile:fileRef,
         reviews:list(object({candidateHash:{type:'string',pattern:'^[a-f0-9]{64}$'},environment:id,instance:id,

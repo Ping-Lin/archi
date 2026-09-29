@@ -3,7 +3,7 @@ import { validateSystem } from './system-contract.mjs';
 
 // Review commands read the same pinned bundle as analysis, never a workspace draft.
 export function loadReviewBundle(inputs, service) {
-  if (!['ai-evidence/1','ai-evidence/2'].includes(service.source.adapter)) throw Error('Service does not use ai-evidence/1 or ai-evidence/2');
+  if (!['ai-evidence/1','ai-evidence/2','ai-evidence/3'].includes(service.source.adapter)) throw Error('Service does not use a supported ai-evidence adapter');
   const ref = service.source.candidateFile;
   const raw = inputs.files.get(`${ref.repository}/${ref.path}`);
   if (typeof raw !== 'string' || Buffer.byteLength(raw) > 2 * 1024 * 1024)
