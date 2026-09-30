@@ -284,3 +284,12 @@ Secret reference 會標示 opaque，不讀取內容；標準 Secret 文件在新
 模擬案例：`node scripts/configmap-fixture.mjs artifacts/configmap-demo`。
 分析該資料夾的 `accepted.json` 後，可查看 QA 的設定來源與 gRPC 關係。
 詳細設定見 [ConfigMap environment](configmap-environment.md)。
+
+### Spring Boot 3 相容性驗證
+
+`npm run test:spring-boot` 會 build 並啟動固定版本 Spring Boot 3.5.6 的 Java fixture，
+比較 Spring Environment、ConfigurationProperties 與 Archi 的設定結果。
+需要 Java 17+、Maven；首次 build 會下載依賴，不連 cluster、不啟動 web server。
+測試成功只代表這個版本與列出的案例一致，不代表所有 Boot 3 寫法都支援。
+ConfigData import 目前仍是已知缺口，測試要求 Archi 保持 incomplete。
+案例與界線見 [Spring Boot compatibility](spring-boot-compatibility.md)。

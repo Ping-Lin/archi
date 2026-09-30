@@ -3,4 +3,5 @@ __pycache__/
 .venv/
 artifacts/
 node_modules/
+examples/spring-boot-compat/target/
 config/runtime-refresh.local.json

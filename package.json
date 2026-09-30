@@ -7,6 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "test:spring-boot": "node scripts/spring-boot-compat.mjs",
     "dev": "node scripts/archi.mjs serve",
     "demo": "node scripts/archi.mjs demo",
     "generate": "node scripts/archi.mjs generate",
