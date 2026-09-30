@@ -5,6 +5,7 @@ import { extractAiCandidates } from './ai-candidates.mjs';
 import { parsePropertyFile, flattenProperties } from './property-files.mjs';
 import { applyPlaceholders } from './placeholders.mjs';
 import { resolveConfigMapEnvironment } from './configmap-env.mjs';
+import { resolveConfigImports } from './config-imports.mjs';
 
 const records = { type: "array", items: { type: "object" } };
 const coverage = {
@@ -22,6 +23,7 @@ const result = (required, properties) => ({
   properties: { ...properties, diagnostics: records },
 });
 export const adapterResultSchemas = Object.freeze({
+  'spring-properties/5':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
   'spring-properties/4':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
   'ai-evidence/3':result(['candidates','coverage'],{candidates:records,coverage}),
   'spring-properties/3':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
@@ -75,6 +77,7 @@ export function validateAdapterResult(id, result) {
 
 // Closed, versioned built-ins. A manifest selects an adapter, never executable code.
 export const adapterContracts = Object.freeze({
+  'spring-properties/5':Object.freeze({input:'v4-config-scope + explicitly-bound-import-tree',output:'effective-values + import-evidence + diagnostics',engine:'bound-config-imports/1 + rendered-configmap-env/1 + closed-scope-placeholders/1'}),
   'spring-properties/4':Object.freeze({input:'v3-config-scope + rendered-configmap-env',output:'effective-values + scoped-reference-evidence + diagnostics',engine:'rendered-configmap-env/1 + closed-scope-placeholders/1'}),
   'ai-evidence/3':Object.freeze({input:'pinned-source + scoped-endpoint-bindings + declared-reviews',output:'candidates + coverage + diagnostics',engine:'evidence-validation/3 + grpc-endpoint/1'}),
   'spring-properties/3':Object.freeze({input:'v2-config-scope + exact-key-placeholders',output:'effective-values + transitive-evidence + diagnostics',engine:'closed-scope-placeholders/1'}),
@@ -107,10 +110,11 @@ export function runAdapter(id, context) {
       context.ledger,
     );
   else if (['ai-evidence/1','ai-evidence/2','ai-evidence/3'].includes(id)) result=extractAiCandidates(context);
-  else if (['spring-properties/2','spring-properties/3','spring-properties/4'].includes(id)) result=resolveProperties(context.files,context.env,context.resources,context.source,context.ledger,{
+  else if (['spring-properties/2','spring-properties/3','spring-properties/4','spring-properties/5'].includes(id)) result=resolveProperties(context.files,context.env,context.resources,context.source,context.ledger,{
     parseFile:parsePropertyFile,flatten:flattenProperties,environmentBindings:context.env.environmentBindings ?? [],
     ...(id!=='spring-properties/2'?{placeholders:applyPlaceholders}:{}),
-    ...(id==='spring-properties/4'?{environmentResolver:resolveConfigMapEnvironment,adapter:id}:{}),
+    ...(['spring-properties/4','spring-properties/5'].includes(id)?{environmentResolver:resolveConfigMapEnvironment,adapter:id}:{}),
+    ...(id==='spring-properties/5'?{fileResolver:resolveConfigImports}:{}),
   });
   else if (id === "spring-properties/1")
     result = resolveProperties(

@@ -97,5 +97,6 @@ and reviewed gRPC candidates. QA maps portal to orders; production remains unrev
 and has an opaque Secret reference with a fake marker to verify export redaction.
 Reviews are explicitly synthetic; no actual human approval or deployment is claimed.
 
-Still unsupported: mounted ConfigMap files, binaryData, Spring ConfigData imports,
+Still unsupported in /4: mounted ConfigMap files, binaryData, Spring ConfigData imports,
 automatic profile file discovery, external Secret stores and custom configuration loaders.
+The additive [/5 adapter](config-imports.md) supports a separate bounded file-import contract.

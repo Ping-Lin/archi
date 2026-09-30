@@ -133,6 +133,8 @@ export async function analyzeSystem(
           propertyFiles: instance.propertyFiles.map(refPath),
           propertiesComplete: instance.propertiesComplete,
           environmentBindings: instance.configuration?.environmentBindings,
+          importProfilePolicy:instance.configuration?.importProfilePolicy,
+          importBindings:instance.configuration?.importBindings?.map(b=>({from:refPath(b.from),location:b.location,file:refPath(b.file)})),
           observations: null,
           targets: [],
         };

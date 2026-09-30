@@ -260,7 +260,12 @@ export function resolveProperties(files, env, resources, source, ledger, options
       }
     }
   };
-  for (const file of env.propertyFiles) {
+  const imported=options.fileResolver?.(files,env,ledger);
+  if(imported){
+    diagnostics.push(...imported.diagnostics);if(!imported.complete)complete=false;
+    for(const source of imported.sources)add(source.mapping,source.file,'config_resolution',source.evidenceIds,imported.factIds);
+  }
+  for (const file of imported?[]:env.propertyFiles) {
     try {
       if (options.parseFile) add(options.parseFile(file,files.get(file)),file,'config_resolution');
       else {
@@ -379,6 +384,7 @@ export function resolveProperties(files, env, resources, source, ledger, options
     contentHash: hash({
       profiles: env.profiles,
       propertiesComplete: env.propertiesComplete,
+      ...(imported?{importProfilePolicy:env.importProfilePolicy,importBindings:env.importBindings}:{}),
       ...(options.environmentBindings ? {adapter:options.adapter??(options.placeholders?'spring-properties/3':'spring-properties/2'),environmentBindings:options.environmentBindings,propertyFiles:env.propertyFiles} : {}),
     }),
   });
@@ -394,12 +400,12 @@ export function resolveProperties(files, env, resources, source, ledger, options
     env.id,
     {
       complete,
-      ...(resolvedEnvironment?{referenceFactIds:resolvedEnvironment.factIds}:{}),
+      ...(resolvedEnvironment?{referenceFactIds:[...resolvedEnvironment.factIds,...(imported?.factIds??[])]}:{}),
       profiles: env.profiles,
       assumption:
         "Reviewed closed property-source scope; not live configuration",
     },
     [policyEvidence],
   );
-  return { values, chains, complete, scopeFact, diagnostics, ...(resolvedEnvironment?{referenceFactIds:resolvedEnvironment.factIds}:{}) };
+  return { values, chains, complete, scopeFact, diagnostics, ...(resolvedEnvironment?{referenceFactIds:[...resolvedEnvironment.factIds,...(imported?.factIds??[])]}:{}) };
 }

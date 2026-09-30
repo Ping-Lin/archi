@@ -293,3 +293,18 @@ Secret reference 會標示 opaque，不讀取內容；標準 Secret 文件在新
 測試成功只代表這個版本與列出的案例一致，不代表所有 Boot 3 寫法都支援。
 ConfigData import 目前仍是已知缺口，測試要求 Archi 保持 incomplete。
 案例與界線見 [Spring Boot compatibility](spring-boot-compatibility.md)。
+
+### 明確綁定的 ConfigData imports
+
+現在可選 `spring-properties/5`，用 `importBindings` 對應「宣告 import 的檔案」、
+「原始 location 字串」與「pinned repository 的目標檔案」。支援多檔順序、巢狀
+relative imports，以及檔案存在的 optional imports；不會依字串自動讀本機或網路。
+
+必須確認沒有自動 profile variants，才可宣告
+`importProfilePolicy: "no-variants-reviewed"`；不確定時保持 `propertiesComplete: false`。
+optional 目標缺少、循環、重複載入或缺少綁定都保持 incomplete。
+舊版 /4 的 import 行為不變。畫面 **Configuration imports** 可查看來源鏈與狀態。
+
+可用 `node scripts/config-imports-fixture.mjs artifacts/imports-demo` 建立模擬案例。
+完整設定見 [ConfigData import bindings](config-imports.md)。掛載檔案與自動 profile
+載入仍未支援，不要將這個範圍當作完整 Spring ConfigData 相容性。

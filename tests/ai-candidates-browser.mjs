@@ -6,6 +6,7 @@ import {createConfigurationFixture} from '../scripts/configuration-fixture.mjs';
 import {createPlaceholderFixture} from '../scripts/placeholder-fixture.mjs';
 import {createGrpcFixture} from '../scripts/grpc-fixture.mjs';
 import {createConfigMapFixture} from '../scripts/configmap-fixture.mjs';
+import {createConfigImportsFixture} from '../scripts/config-imports-fixture.mjs';
 import {analyzeSystem} from '../src/analysis/system-run.mjs';
 const {chromium}=createRequire(import.meta.url)('playwright');
 const root=await mkdtemp(path.join(os.tmpdir(),'archi-ai-browser-'));
@@ -70,5 +71,11 @@ try{
  await page.getByLabel('Candidate filter',{exact:true}).selectOption('accepted');
  assert.match(await page.getByRole('region',{name:'Rendered configuration references'}).innerText(),/ConfigMap · route-defaults[\s\S]*resolved[\s\S]*route-overrides/);
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
- assert.deepEqual(errors,[]);console.log('AI candidate browser passed: reviews, scoped edges, gRPC, ConfigMap references, export and mobile layout');
+ const importsFixture=await createConfigImportsFixture(path.join(root,'imports'));
+ displayed=await analyzeSystem(importsFixture.root,'accepted.json');await page.reload();
+ await page.getByRole('tab',{name:'Connections & evidence'}).click();
+ await page.getByLabel('Candidate filter',{exact:true}).selectOption('accepted');
+ assert.match(await page.getByRole('region',{name:'Configuration imports'}).innerText(),/portal-qa.yaml[\s\S]*routing-qa.properties[\s\S]*bound/);
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ assert.deepEqual(errors,[]);console.log('AI candidate browser passed: reviews, scoped edges, gRPC, ConfigMap/import references, export and mobile layout');
 }finally{await browser?.close();await rm(root,{recursive:true,force:true});}

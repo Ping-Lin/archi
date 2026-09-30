@@ -82,6 +82,7 @@ export async function captureSystem(root, manifestPath, { includeCandidates = tr
       const service = manifest.services.find((s) => s.id === i.service);
       for (const ref of [...service.source.files, ...i.propertyFiles])
         paths.add(read(ref));
+      for(const b of i.configuration?.importBindings??[]){paths.add(read(b.from));paths.add(read(b.file));}
       if(includeCandidates && service.source.candidateFile)paths.add(read(service.source.candidateFile));
     }
     for (const release of env.releases) {

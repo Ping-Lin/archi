@@ -4,10 +4,10 @@ The executable fixture pins **Spring Boot 3.5.6, Java 17**. This is a reproducib
 compatibility baseline, not a recommendation to deploy that historical patch or
 a claim that every Spring Boot 3 version or application is supported.
 
-Local result (2026-09-30): all nine cases passed on OpenJDK 17.0.20. Seven
-supported cases matched all three value checks; two unsupported cases remained
-incomplete in Archi. No parser changes were needed for this tested subset.
-The existing 159 JavaScript tests and Helm lint/render gates also passed.
+Initial baseline (2026-09-30): nine cases passed on OpenJDK 17.0.20, seven matched
+and two intentionally incomplete. The additive /5 import adapter extends the gate
+to fifteen cases: twelve value matches and three deliberately incomplete outcomes.
+Import scope and bindings are described in [ConfigData imports](config-imports.md).
 
 ```bash
 # Requires Java 17+ and Maven; first build downloads dependencies from Maven Central.
@@ -22,7 +22,7 @@ Ambient Spring variables and JVM option variables are not inherited by the probe
 
 The runner compares three independently checked outputs against handwritten
 expected values: Spring `Environment`, constructor-bound `@ConfigurationProperties`,
-and Archi's `spring-properties/4` adapter. It asserts the actual Boot version.
+and Archi's `spring-properties/4` or explicitly selected /5 adapter. It asserts the actual Boot version.
 Spring loads real files through ConfigData; Archi receives the explicitly reviewed
 file order and environment mappings. The CLI location argument is a fixture harness
 control, not new Archi support for arbitrary application arguments.
@@ -38,6 +38,12 @@ control, not new Archi support for arbitrary application arguments.
 | Explicit reviewed profile overlay | port 8100 |
 | ConfigData import | Spring loads port 8200; Archi stays incomplete |
 | Missing placeholder | Spring fails; Archi stays incomplete |
+| Bound import (/5) | port 8200 |
+| Ordered imports (/5) | last import wins, port 8200 |
+| Nested import (/5) | leaf placeholder resolves port 8300 |
+| Optional present import (/5) | port 8200 |
+| Optional unbound import (/5) | Spring falls back; Archi stays incomplete |
+| Environment over import (/5) | port 9000 |
 
 The runner exits nonzero for unexpected results, build errors or missing tooling;
 there is no skip-success path. It writes `artifacts/spring-boot-compat/report.json`
@@ -53,11 +59,12 @@ connectivity, CD equivalence or production deployment correctness.
 
 The ConfigMap adapter has its own Helm/reference tests; this fixture supplies literal
 environment values to the Java process, so it is not a kubelet integration test.
-The import case deliberately demonstrates a known capability gap instead of
+The /4 import case deliberately demonstrates its known capability gap instead of
 claiming support because an operator could manually flatten the imported file.
 
-Next: add reviewed mounted-file and ConfigData import semantics against this real
-Spring oracle; broaden the version matrix when target project patch versions are known.
+The /5 cases verify explicit import trees without profile variants; they do not
+establish arbitrary ConfigData support. Next: add reviewed mounted-file and profile-aware
+import semantics; broaden the version matrix when target project patch versions are known.
 Do not generalize one successful version to all Boot 3 releases.
 
 Framework reference: [Spring Boot 3.5 external configuration](https://docs.spring.io/spring-boot/3.5/reference/features/external-config.html).

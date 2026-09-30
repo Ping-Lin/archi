@@ -19,6 +19,12 @@ const cases=[
   {id:'explicit-profile-overlay',files:[['base.properties',base],['reviewed-qa.properties','peer.port=8100\n']],expected:['orders','8100']},
   {id:'unsupported-import',files:[['application.properties',base+'spring.config.import=extra.properties\n']],extra:[['extra.properties','peer.port=8200\n']],expected:['orders','8200'],unsupported:true},
   {id:'missing-placeholder',files:[['application.properties','peer.host=${missing}\npeer.port=8080\n']],bootFailure:true,unsupported:true},
+  {id:'bound-import',files:[['application.properties',base+'spring.config.import=extra.properties\n']],extra:[['extra.properties','peer.port=8200\n']],imports:[['application.properties','extra.properties','extra.properties']],expected:['orders','8200']},
+  {id:'ordered-imports',files:[['application.properties',base+'spring.config.import=first.properties,second.yaml\n']],extra:[['first.properties','peer.port=8100\n'],['second.yaml','peer:\n  port: 8200\n']],imports:[['application.properties','first.properties','first.properties'],['application.properties','second.yaml','second.yaml']],expected:['orders','8200']},
+  {id:'nested-import',files:[['application.properties',base+'spring.config.import=nested/extra.properties\n']],extra:[['nested/extra.properties','peer.port=8100\nspring.config.import=leaf.properties\n'],['nested/leaf.properties','peer.port=${final.port:8300}\n']],imports:[['application.properties','nested/extra.properties','nested/extra.properties'],['nested/extra.properties','leaf.properties','nested/leaf.properties']],expected:['orders','8300']},
+  {id:'optional-present-import',files:[['application.properties',base+'spring.config.import=optional:extra.properties\n']],extra:[['extra.properties','peer.port=8200\n']],imports:[['application.properties','optional:extra.properties','extra.properties']],expected:['orders','8200']},
+  {id:'optional-unbound-import',files:[['application.properties',base+'spring.config.import=optional:missing.properties\n']],imports:[],expected:['orders','7000'],unsupported:true},
+  {id:'environment-over-import',files:[['application.properties',base+'spring.config.import=extra.properties\n']],extra:[['extra.properties','peer.port=8200\n']],imports:[['application.properties','extra.properties','extra.properties']],env:{PEER_PORT:'9000'},expected:['orders','9000']},
 ];
 const repo=fileURLToPath(new URL('../',import.meta.url));
 const pom=path.join(repo,'examples/spring-boot-compat/pom.xml');
@@ -28,7 +34,7 @@ const root=await mkdtemp(path.join(os.tmpdir(),'archi-boot-compat-')),results=[]
 try {
   for(const scenario of cases) {
     const cwd=path.join(root,scenario.id);await mkdir(cwd);
-    for(const [name,text] of [...scenario.files,...(scenario.extra??[])])await writeFile(path.join(cwd,name),text);
+    for(const [name,text] of [...scenario.files,...(scenario.extra??[])]){await mkdir(path.dirname(path.join(cwd,name)),{recursive:true});await writeFile(path.join(cwd,name),text);}
     const variables={SPRING_PROFILES_ACTIVE:'qa',...(scenario.env??{})};
     const run=spawnSync(process.env.JAVA_BIN??'java',['-jar',jar,'--spring.config.location='+scenario.files.map(([name])=>pathToFileURL(path.join(cwd,name)).href).join(',')],
       {cwd,env:{PATH:process.env.PATH,LANG:'C.UTF-8',...variables},encoding:'utf8',timeout:30000,maxBuffer:1024*1024});
@@ -36,8 +42,8 @@ try {
     const observed=Object.fromEntries(run.stdout.split('\n').filter(l=>l.startsWith('ARCHI_PROBE:')).map(l=>{
       const [,key,value]=l.split(':');return [key,Buffer.from(value,'base64').toString('utf8')];
     }));
-    const properties=runAdapter('spring-properties/4',{
-      files:new Map(scenario.files),env:{id:'qa',profiles:['qa'],propertiesComplete:true,propertyFiles:scenario.files.map(([name])=>name),environmentBindings:scenario.env?.PEER_PORT?[{name:'PEER_PORT',key:'peer.port'}]:[]},
+    const properties=runAdapter(scenario.imports?'spring-properties/5':'spring-properties/4',{
+      files:new Map([...scenario.files,...(scenario.extra??[])]),env:{id:'qa',profiles:['qa'],propertiesComplete:true,propertyFiles:scenario.files.map(([name])=>name),environmentBindings:scenario.env?.PEER_PORT?[{name:'PEER_PORT',key:'peer.port'}]:[],...(scenario.imports?{importProfilePolicy:'no-variants-reviewed',importBindings:scenario.imports.map(([from,location,file])=>({from,location,file}))}:{})},
       source:{service:'probe'},ledger:createLedger('qa','probe'),resources:[{kind:'Deployment',key:'probe',service:'probe',spec:{template:{spec:{containers:[{env:Object.entries(variables).map(([name,value])=>({name,value}))}]}}}}],
     });
     if(scenario.bootFailure){

@@ -4,6 +4,9 @@ Status: implemented bounded adapters, not a complete Spring Boot configuration
 engine. Existing manifests retain `spring-properties/1` unless explicitly opted in.
 No cluster access, automatic discovery, LLM calls or polling are involved.
 
+[`spring-properties/5`](config-imports.md) adds explicitly bound file import trees;
+it does not expand older adapters or provide automatic ConfigData discovery.
+
 Newer opt-ins: [spring-properties/4](configmap-environment.md) adds scoped rendered
 ConfigMap environment references; [ai-evidence/3](grpc-endpoints.md) adds bounded
 gRPC endpoint identities. The older-version limits below remain unchanged.

@@ -34,10 +34,16 @@ export const bindingSchema = object({
   propertiesComplete: { type: "boolean" },
 });
 // Optional, versioned configuration policy. Omission retains the v1 adapter.
-bindingSchema.properties.configuration = object({
+const configurationV4 = object({
   adapter: {enum:['spring-properties/2','spring-properties/3','spring-properties/4']},
   environmentBindings: list(object({name:{...text,pattern:'^[A-Za-z_][A-Za-z0-9_]*$'},key:text})),
 });
+bindingSchema.properties.configuration={oneOf:[configurationV4,object({
+  adapter:{const:'spring-properties/5'},
+  environmentBindings:configurationV4.properties.environmentBindings,
+  importProfilePolicy:{const:'no-variants-reviewed'},
+  importBindings:{...list(object({from:fileRef,location:{...text,maxLength:2048},file:fileRef})),maxItems:128},
+})]};
 export const systemSchema = object({
   schemaVersion: { const: SYSTEM_VERSION },
   simulation: { type: "boolean" },
@@ -168,6 +174,12 @@ export function validateSystem(manifest) {
       workloads.add(key);
       i.propertyFiles.forEach(file);
       if (i.configuration) {
+        const imports=new Set();
+        for(const b of i.configuration.importBindings??[]){
+          file(b.from);file(b.file);
+          const key=JSON.stringify([b.from.repository,b.from.path,b.location]);
+          if(imports.has(key))throw Error('Duplicate config import binding');imports.add(key);
+        }
         const names=new Set(),keys=new Set();
         for(const b of i.configuration.environmentBindings) {
           if(names.has(b.name)||keys.has(b.key))throw Error('Duplicate environment binding');

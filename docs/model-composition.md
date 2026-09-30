@@ -1,5 +1,8 @@
 # System composition — archi/system-v1alpha1
 
+`spring-properties/5` adds approved import file bindings to capture and input locks;
+see [explicit ConfigData imports](config-imports.md).
+
 `spring-properties/4` adds scoped rendered ConfigMap environment resolution and
 opaque Secret references. See [ConfigMap bindings](configmap-environment.md).
 
