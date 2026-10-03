@@ -84,5 +84,12 @@ try{
  await page.getByLabel('Candidate filter',{exact:true}).selectOption('accepted');
  assert.match(await page.getByRole('region',{name:'Mounted configuration files'}).innerText(),/routing-files[\s\S]*\/etc\/archi-config\/routing.properties[\s\S]*projected/);
  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+ const mountedImportsFixture=await createMountedConfigFixture(path.join(root,'mounted-imports'),{imports:true});
+ displayed=await analyzeSystem(mountedImportsFixture.root,'accepted.json');await page.reload();
+ await page.getByRole('tab',{name:'Connections & evidence'}).click();
+ await page.getByLabel('Candidate filter',{exact:true}).selectOption('accepted');
+ assert.match(await page.getByRole('region',{name:'Configuration imports'}).innerText(),/\/etc\/archi-config\/routing.properties[\s\S]*leaf.properties[\s\S]*bound/);
+ assert.match(await page.getByRole('region',{name:'Mounted configuration files'}).innerText(),/leaf.properties/);
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
  assert.deepEqual(errors,[]);console.log('AI candidate browser passed: reviews, scoped edges, gRPC, ConfigMap/import/mount references, export and mobile layout');
 }finally{await browser?.close();await rm(root,{recursive:true,force:true});}

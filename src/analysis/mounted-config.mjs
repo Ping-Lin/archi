@@ -1,10 +1,12 @@
 import {parsePropertyFile} from './property-files.mjs';
+import {posix} from 'node:path';
+import {resolveConfigImports} from './config-imports.mjs';
 export const absoluteConfigPath=p=>typeof p==='string'&&/^\/(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+$/.test(p)&&!p.split('/').some(s=>s==='.'||s==='..');
 const relative=p=>typeof p==='string'&&/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(p)&&!p.split('/').some(s=>s==='.'||s==='..');
 const fields=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
 const mode=v=>v===undefined||(Number.isInteger(v)&&v>=0&&v<=511);
 const name=v=>typeof v==='string'&&/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(v)&&v.length<=253;
-export function resolveMountedConfig(container,deployment,resources,env,variables,ledger){
+export function resolveMountedConfig(container,deployment,resources,env,variables,ledger,{imports=false}={}){
   const diagnostics=[],sources=[],factIds=[],projected=new Map(),mountPaths=[];
   const fail=message=>diagnostics.push({code:'MOUNTED_CONFIG_INCOMPLETE',message});
   const mounts=container?.volumeMounts??[],volumes=deployment?.spec?.template?.spec?.volumes??[];
@@ -47,6 +49,23 @@ export function resolveMountedConfig(container,deployment,resources,env,variable
   const locations=variables.filter(v=>v.name==='SPRING_CONFIG_ADDITIONAL_LOCATION');
   const expected=paths.map(p=>'file:'+p).join(',');
   if(!paths.length||locations.length!==1||locations[0].value!==expected)fail('SPRING_CONFIG_ADDITIONAL_LOCATION must exactly match ordered mountedFiles as file: paths');
+  if(imports){
+    const bindings=env.mountedImportBindings??[],reviewed=new Set(paths);
+    if(!Array.isArray(bindings)||bindings.length>128||bindings.some(b=>!fields(b,['from','location','file'])||typeof b.location!=='string'))return {sources,factIds,complete:false,diagnostics:[...diagnostics,{code:'MOUNTED_CONFIG_INCOMPLETE',message:'Invalid mounted import bindings'}]};
+    for(const b of bindings){
+      const location=typeof b.location==='string'?b.location.replace(/^optional:/,''):'';
+      if(!absoluteConfigPath(b.from)||!absoluteConfigPath(b.file)||!relative(location)||posix.join(posix.dirname(b.from),location)!==b.file){
+        fail('Mounted import binding must preserve the exact relative container path');
+      }
+      reviewed.add(b.from);reviewed.add(b.file);
+    }
+    // This map is captured render data, never the host/container filesystem.
+    const result=resolveConfigImports(new Map([...projected].map(([file,c])=>[file,c.text])),{...env,propertyFiles:paths,importBindings:bindings},ledger);
+    diagnostics.push(...result.diagnostics);factIds.push(...result.factIds);
+    for(const source of result.sources)sources.push({...source,file:`mounted:${source.file}`,evidenceIds:[...source.evidenceIds,...(projected.get(source.file)?.evidenceIds??[])]});
+    for(const file of projected.keys())if(!reviewed.has(file))fail(`Unreviewed mounted file: ${file}`);
+    return {sources,factIds,diagnostics,complete:diagnostics.length===0};
+  }
   for(const file of paths){
     for(const profile of env.profiles?.length?env.profiles:['default']){
       const variant=file.replace(/(\.[^.]+)$/,`-${profile}$1`);

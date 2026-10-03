@@ -24,6 +24,7 @@ const result = (required, properties) => ({
   properties: { ...properties, diagnostics: records },
 });
 export const adapterResultSchemas = Object.freeze({
+  'spring-properties/7':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
   'spring-properties/6':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
   'spring-properties/5':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
   'spring-properties/4':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
@@ -79,6 +80,7 @@ export function validateAdapterResult(id, result) {
 
 // Closed, versioned built-ins. A manifest selects an adapter, never executable code.
 export const adapterContracts = Object.freeze({
+  'spring-properties/7':Object.freeze({input:'v6-config-scope + explicit-mounted-import-bindings',output:'effective-values + mount-and-import-evidence + diagnostics',engine:'mounted-configmap-files/2 + bound-config-imports/1 + rendered-configmap-env/1 + closed-scope-placeholders/1'}),
   'spring-properties/6':Object.freeze({input:'v5-config-scope + explicit-mounted-configmap-files',output:'effective-values + mount-evidence + diagnostics',engine:'mounted-configmap-files/1 + bound-config-imports/1 + rendered-configmap-env/1 + closed-scope-placeholders/1'}),
   'spring-properties/5':Object.freeze({input:'v4-config-scope + explicitly-bound-import-tree',output:'effective-values + import-evidence + diagnostics',engine:'bound-config-imports/1 + rendered-configmap-env/1 + closed-scope-placeholders/1'}),
   'spring-properties/4':Object.freeze({input:'v3-config-scope + rendered-configmap-env',output:'effective-values + scoped-reference-evidence + diagnostics',engine:'rendered-configmap-env/1 + closed-scope-placeholders/1'}),
@@ -113,12 +115,13 @@ export function runAdapter(id, context) {
       context.ledger,
     );
   else if (['ai-evidence/1','ai-evidence/2','ai-evidence/3'].includes(id)) result=extractAiCandidates(context);
-  else if (['spring-properties/2','spring-properties/3','spring-properties/4','spring-properties/5','spring-properties/6'].includes(id)) result=resolveProperties(context.files,context.env,context.resources,context.source,context.ledger,{
+  else if (['spring-properties/2','spring-properties/3','spring-properties/4','spring-properties/5','spring-properties/6','spring-properties/7'].includes(id)) result=resolveProperties(context.files,context.env,context.resources,context.source,context.ledger,{
     parseFile:parsePropertyFile,flatten:flattenProperties,environmentBindings:context.env.environmentBindings ?? [],
     ...(id!=='spring-properties/2'?{placeholders:applyPlaceholders}:{}),
-    ...(['spring-properties/4','spring-properties/5','spring-properties/6'].includes(id)?{environmentResolver:resolveConfigMapEnvironment,adapter:id}:{}),
-    ...(['spring-properties/5','spring-properties/6'].includes(id)?{fileResolver:resolveConfigImports}:{}),
+    ...(['spring-properties/4','spring-properties/5','spring-properties/6','spring-properties/7'].includes(id)?{environmentResolver:resolveConfigMapEnvironment,adapter:id}:{}),
+    ...(['spring-properties/5','spring-properties/6','spring-properties/7'].includes(id)?{fileResolver:resolveConfigImports}:{}),
     ...(id==='spring-properties/6'?{mountResolver:resolveMountedConfig}:{}),
+    ...(id==='spring-properties/7'?{mountResolver:(...args)=>resolveMountedConfig(...args,{imports:true})}:{}),
   });
   else if (id === "spring-properties/1")
     result = resolveProperties(

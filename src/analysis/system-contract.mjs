@@ -45,9 +45,13 @@ const configurationV5=object({
   importProfilePolicy:{const:'no-variants-reviewed'},
   importBindings:{...list(object({from:fileRef,location:{...text,maxLength:2048},file:fileRef})),maxItems:128},
 });
-bindingSchema.properties.configuration={oneOf:[configurationV4,configurationV5,object({
+const configurationV6=object({
   ...configurationV5.properties,adapter:{const:'spring-properties/6'},
   mountedFiles:{...unique(text),minItems:1,maxItems:64},
+});
+bindingSchema.properties.configuration={oneOf:[configurationV4,configurationV5,configurationV6,object({
+  ...configurationV6.properties,adapter:{const:'spring-properties/7'},
+  mountedImportBindings:{...list(object({from:text,location:{...text,maxLength:2048},file:text})),maxItems:128},
 })]};
 export const systemSchema = object({
   schemaVersion: { const: SYSTEM_VERSION },
@@ -180,6 +184,13 @@ export function validateSystem(manifest) {
       i.propertyFiles.forEach(file);
       if (i.configuration) {
         for(const p of i.configuration.mountedFiles??[])if(!absoluteConfigPath(p)||!/\.(properties|yaml|yml)$/.test(p))throw Error('Invalid mounted configuration path');
+        const mountedImports=new Set();
+        for(const b of i.configuration.mountedImportBindings??[]){
+          if(![b.from,b.file].every(p=>absoluteConfigPath(p)&&/\.(properties|yaml|yml)$/.test(p)))throw Error('Invalid mounted import path');
+          const key=JSON.stringify([b.from,b.location]);
+          if(mountedImports.has(key))throw Error('Duplicate mounted import binding');
+          mountedImports.add(key);
+        }
         const imports=new Set();
         for(const b of i.configuration.importBindings??[]){
           file(b.from);file(b.file);

@@ -3,7 +3,8 @@
 ## Delivered
 
 Opt-in `spring-properties/6` resolves explicitly loaded ConfigMap files from pinned
-Helm render evidence. It composes with /5 imports, /4 environment references and /3
+Helm render evidence. Additive /7 now resolves explicitly bound imports between
+those projected files. It composes with /5 imports, /4 environment references and /3
 placeholders. Existing adapters remain unchanged. See
 [configuration contract and reproduction](mounted-configuration.md).
 
@@ -27,21 +28,22 @@ selection and the distinction between repository paths and container mount paths
 ## Verification
 
 - `npm run generate`: no generated changes.
-- `npm run verify`: 34 core/UI + 134 analysis tests; zero failures or skips with Helm.
+- `npm run verify`: 34 core/UI + 138 analysis tests; zero failures or skips with Helm.
   The skill scenario repeats the 34 core tests and is not counted again.
 - `npm run check:helm`: every maintained project/context lint and render passed.
 - Browser regression: review scope, gRPC, ConfigMap/import/mount evidence, export,
   mobile containment; no page errors.
-- Real Spring Boot 3.5.6 / Java 17: 19 cases, 16 matched values and 3 correctly
-  incomplete outcomes. Four added cases verify additional files and override order.
+- Real Spring Boot 3.5.6 / Java 17: 25 cases, 21 matched values and 4 correctly
+  incomplete outcomes. Six /7 cases verify bound/nested/ordered imports,
+  optional-present/missing behavior and environment override.
   Initial local build/cache failures were resolved by rebuilding temporary artifacts.
 
 ## Next direction
 
 1. Add profile-aware ConfigData semantics with independent Boot expected results;
    include ordered active profiles and negative multi-document activation cases.
-2. Extend imports to mounted files through the already captured projection table,
-   without reading arbitrary paths or fetching remote locations.
+2. Evaluate shared-import deduplication and config location groups against Spring
+   before supporting them; /7 intentionally blocks repeated file loads.
 3. Evaluate actual project specimens and supported Boot patch versions. Arbitrary
    Java/Kotlin client construction is still outside deterministic source extraction;
    reviewed AI evidence is not equivalent to a proven language-level interpretation.

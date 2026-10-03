@@ -70,7 +70,11 @@ The /5 cases verify explicit import trees without profile variants; they do not
 establish arbitrary ConfigData support. Four /6 cases cover explicit additional files,
 ordered properties/YAML, environment override and JSON override. Their temporary files
 represent ConfigMap contents; no Kubernetes projection or permission behavior is tested.
-Next: profile-aware and mounted-file import semantics; broaden the version matrix when
+Six /7 cases add mounted-file bound, nested, ordered, optional-present,
+optional-missing and environment override scenarios, bringing the suite to 25 cases.
+The full suite passed locally on 2026-10-03: 21 matched values and 4 correctly
+incomplete outcomes.
+Next: profile-aware semantics; broaden the version matrix when
 target project patch versions are known.
 Do not generalize one successful version to all Boot 3 releases.
 

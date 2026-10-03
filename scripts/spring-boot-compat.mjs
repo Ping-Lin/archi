@@ -29,6 +29,12 @@ const cases=[
   {id:'ordered-mounted-files',files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8100\n'],['override.yaml','peer:\n  port: 8200\n']],expected:['orders','8200']},
   {id:'environment-over-mounted',files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8100\n']],env:{PEER_PORT:'9000'},expected:['orders','9000']},
   {id:'json-over-mounted-and-env',files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8100\n']],env:{PEER_PORT:'9000',SPRING_APPLICATION_JSON:'{"peer.port":"9090"}'},expected:['orders','9090']},
+  {id:'mounted-bound-import',files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8100\nspring.config.import=leaf.properties'],['leaf.properties','peer.port=8200']],mountedRoots:['routing.properties'],mountedImports:[['routing.properties','leaf.properties','leaf.properties']],expected:['orders','8200']},
+  {id:'mounted-nested-import',files:[['application.properties',base]],mounted:[['routing.properties','spring.config.import=leaf.properties'],['leaf.properties','spring.config.import=last.yaml'],['last.yaml','peer:\n  port: 8300']],mountedRoots:['routing.properties'],mountedImports:[['routing.properties','leaf.properties','leaf.properties'],['leaf.properties','last.yaml','last.yaml']],expected:['orders','8300']},
+  {id:'mounted-ordered-imports',files:[['application.properties',base]],mounted:[['routing.properties','spring.config.import=first.properties,last.yaml'],['first.properties','peer.port=8200'],['last.yaml','peer:\n  port: 8300']],mountedRoots:['routing.properties'],mountedImports:[['routing.properties','first.properties','first.properties'],['routing.properties','last.yaml','last.yaml']],expected:['orders','8300']},
+  {id:'mounted-optional-present',files:[['application.properties',base]],mounted:[['routing.properties','spring.config.import=optional:leaf.properties'],['leaf.properties','peer.port=8200']],mountedRoots:['routing.properties'],mountedImports:[['routing.properties','optional:leaf.properties','leaf.properties']],expected:['orders','8200']},
+  {id:'mounted-optional-missing',files:[['application.properties',base]],mounted:[['routing.properties','spring.config.import=optional:missing.properties']],mountedImports:[],expected:['orders','7000'],unsupported:true},
+  {id:'environment-over-mounted-import',files:[['application.properties',base]],mounted:[['routing.properties','spring.config.import=leaf.properties'],['leaf.properties','peer.port=8200']],mountedRoots:['routing.properties'],mountedImports:[['routing.properties','leaf.properties','leaf.properties']],env:{PEER_PORT:'9000'},expected:['orders','9000']},
 ];
 const repo=fileURLToPath(new URL('../',import.meta.url));
 const pom=path.join(repo,'examples/spring-boot-compat/pom.xml');
@@ -40,7 +46,7 @@ try {
     const cwd=path.join(root,scenario.id);await mkdir(cwd);
     for(const [name,text] of [...scenario.files,...(scenario.extra??[]),...(scenario.mounted??[])]){await mkdir(path.dirname(path.join(cwd,name)),{recursive:true});await writeFile(path.join(cwd,name),text);}
     const variables={SPRING_PROFILES_ACTIVE:'qa',...(scenario.env??{})};
-    const mountedFiles=scenario.mounted?.map(([name])=>path.join(cwd,name));
+    const mountedFiles=scenario.mounted?(scenario.mountedRoots??scenario.mounted.map(([name])=>name)).map(name=>path.join(cwd,name)):undefined;
     if(mountedFiles)variables.SPRING_CONFIG_ADDITIONAL_LOCATION=mountedFiles.map(p=>'file:'+p).join(',');
     const run=spawnSync(process.env.JAVA_BIN??'java',['-jar',jar,'--spring.config.location='+scenario.files.map(([name])=>pathToFileURL(path.join(cwd,name)).href).join(',')],
       {cwd,env:{PATH:process.env.PATH,LANG:'C.UTF-8',...variables},encoding:'utf8',timeout:30000,maxBuffer:1024*1024});
@@ -48,8 +54,8 @@ try {
     const observed=Object.fromEntries(run.stdout.split('\n').filter(l=>l.startsWith('ARCHI_PROBE:')).map(l=>{
       const [,key,value]=l.split(':');return [key,Buffer.from(value,'base64').toString('utf8')];
     }));
-    const properties=runAdapter(scenario.mounted?'spring-properties/6':scenario.imports?'spring-properties/5':'spring-properties/4',{
-      files:new Map([...scenario.files,...(scenario.extra??[])]),env:{id:'qa',cluster:'fixture',namespace:'probe',profiles:['qa'],propertiesComplete:true,propertyFiles:scenario.files.map(([name])=>name),environmentBindings:scenario.env?.PEER_PORT?[{name:'PEER_PORT',key:'peer.port'}]:[],...(scenario.imports||scenario.mounted?{importProfilePolicy:'no-variants-reviewed',importBindings:(scenario.imports??[]).map(([from,location,file])=>({from,location,file}))}:{}),...(mountedFiles?{mountedFiles}:{})},
+    const properties=runAdapter(scenario.mountedImports?'spring-properties/7':scenario.mounted?'spring-properties/6':scenario.imports?'spring-properties/5':'spring-properties/4',{
+      files:new Map([...scenario.files,...(scenario.extra??[])]),env:{id:'qa',cluster:'fixture',namespace:'probe',profiles:['qa'],propertiesComplete:true,propertyFiles:scenario.files.map(([name])=>name),environmentBindings:scenario.env?.PEER_PORT?[{name:'PEER_PORT',key:'peer.port'}]:[],...(scenario.imports||scenario.mounted?{importProfilePolicy:'no-variants-reviewed',importBindings:(scenario.imports??[]).map(([from,location,file])=>({from,location,file}))}:{}),...(mountedFiles?{mountedFiles}:{}),...(scenario.mountedImports?{mountedImportBindings:scenario.mountedImports.map(([from,location,file])=>({from:path.join(cwd,from),location,file:path.join(cwd,file)}))}:{})},
       source:{service:'probe'},ledger:createLedger('qa','probe'),resources:[{kind:'Deployment',key:'probe',service:'probe',spec:{template:{spec:{...(mountedFiles?{volumes:[{name:'config',configMap:{name:'settings'}}]}:{}),containers:[{env:Object.entries(variables).map(([name,value])=>({name,value})),...(mountedFiles?{volumeMounts:[{name:'config',mountPath:cwd}]}:{})}]}}}},...(mountedFiles?[{kind:'ConfigMap',key:'fixture||configmaps|probe|settings',data:Object.fromEntries(scenario.mounted)}]:[])],
     });
     if(scenario.bootFailure){

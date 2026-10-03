@@ -342,3 +342,22 @@ npm run dev
 目前不支援 mounted file 內的 imports、自動 profile 變體、Secret/binaryData、
 subPathExpr 或未知掛載來源。缺資料會標 incomplete，不會據此建立 dependency。
 完整設定與範例見 [Mounted configuration](mounted-configuration.md)。
+
+### 掛載檔案中的 import（/7）
+
+若掛載檔案含 `spring.config.import=routing.properties`，可改用
+`spring-properties/7`，並填入 `mountedImportBindings`：
+
+```json
+{
+  "from": "/etc/app/application.properties",
+  "location": "routing.properties",
+  "file": "/etc/app/routing.properties"
+}
+```
+
+這是陣列中的一筆 binding，完整設定見上述文件。兩個 container paths 都必須能
+追到已擷取的 ConfigMap；不能藉由 binding 把 import 改指其他路徑。
+`mountedFiles` 只放 additional-location 的入口檔，imported file 不要重複放入。
+不需把 properties 另存到本機，也不會透過 import 連 Kubernetes。
+optional 缺檔、重複載入、循環或 profile 變體仍為 incomplete；/6 行為不變。

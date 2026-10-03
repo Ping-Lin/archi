@@ -74,8 +74,7 @@ ordinary temporary files, not Kubernetes mounts; this does not validate kubelet 
 
 ## Remaining deterministic work
 
-1. Profile-aware ConfigData loading and imports from mounted files, with independent
-   Boot parity cases before widening completeness.
+1. Profile-aware ConfigData loading, with independent Boot parity cases before widening completeness.
 2. Explicit unsupported-source diagnostics for real project onboarding; do not treat
    arbitrary Java/Kotlin client factories as proven by the property parser.
 3. More Boot versions and actual project specimens. Reviewed AI source mappings
@@ -83,3 +82,60 @@ ordinary temporary files, not Kubernetes mounts; this does not validate kubelet 
 
 References: [Kubernetes volumes](https://kubernetes.io/docs/concepts/storage/volumes/),
 [Spring external configuration](https://docs.spring.io/spring-boot/3.5/reference/features/external-config.html).
+
+## Mounted imports: opt-in /7
+
+`spring-properties/7` preserves /6 behavior and adds explicitly bound relative import
+trees within the captured projection table. /6 still rejects imports in mounted files.
+
+```json
+{
+  "adapter": "spring-properties/7",
+  "environmentBindings": [],
+  "importProfilePolicy": "no-variants-reviewed",
+  "importBindings": [],
+  "mountedFiles": ["/etc/app/application.properties"],
+  "mountedImportBindings": [
+    {
+      "from": "/etc/app/application.properties",
+      "location": "routing.properties",
+      "file": "/etc/app/routing.properties"
+    }
+  ]
+}
+```
+
+The mounted application file contains `spring.config.import=routing.properties`.
+`mountedFiles` lists additional-location roots, **not every imported file**.
+`mountedImportBindings` uses absolute container paths; `importBindings` continues to
+use repository-qualified refs for the independent repository-file tree.
+Both the declaring file and target must exist in captured ConfigMap projections.
+The target must equal the declaring file's directory plus the literal relative
+location: bindings cannot redirect imports to another runtime path.
+
+Each declaring file loads before its imports; imports load in listed order and
+may recursively import other reviewed files. Later roots override earlier trees;
+env and application JSON still override files. Optional imports are supported only
+when the file is captured and explicitly bound. No missing file is assumed absent.
+
+The existing import resolver is reused, including its 128-file, depth-16 and
+64-import-per-document limits. Cycles, duplicate/shared loads, unused bindings,
+profile variants, parent traversal, URLs, file/classpath/configtree schemes and
+dynamic locations stay incomplete. Every projected file must be a reviewed root or
+participating binding input. No filesystem reads, network fetches or cluster calls
+are authorized by an import string.
+
+Candidate explanations include both `configuration.mount` and `configuration.import`
+facts. File values retain render evidence and the import source hashes. The UI's
+**Configuration imports** panel displays container paths for this tree; `bound` is
+not a runtime availability or whole-scope completeness claim.
+
+```bash
+node scripts/mounted-config-fixture.mjs artifacts/mounted-imports-demo --imports
+npm run analyze -- --root artifacts/mounted-imports-demo --system accepted.json --out ../analysis
+```
+
+The additional synthetic scenario requires the imported ConfigMap file to resolve
+the QA gRPC host. Independent Boot cases cover bound, nested, ordered, optional-present,
+optional-missing and environment-over-import behavior. These still use temporary
+ordinary files and do not establish Kubernetes projection correctness.
