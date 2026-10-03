@@ -79,3 +79,11 @@ target project patch versions are known.
 Do not generalize one successful version to all Boot 3 releases.
 
 Framework reference: [Spring Boot 3.5 external configuration](https://docs.spring.io/spring-boot/3.5/reference/features/external-config.html).
+
+## Profile-aware adapter extension
+
+`spring-properties/8` adds nine repository-profile cases to the gate: root/import
+variant precedence, ordered imports, reversed active profiles, mixed import trees,
+imports declared by profile files, and default profiles. The complete gate has
+34 cases: 30 matched and four deliberately incomplete. See
+[profile configuration](profile-configuration.md) for the bounded contract.

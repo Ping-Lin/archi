@@ -357,8 +357,8 @@ export function resolveProperties(files, env, resources, source, ledger, options
       typeof variable.value === "string" && !variable.valueFrom
     ) {
       if (
-        JSON.stringify(variable.value.split(",").sort()) !==
-        JSON.stringify([...env.profiles].sort())
+        JSON.stringify(options.orderedProfiles?variable.value.split(',').map(p=>p.trim()).filter(Boolean):variable.value.split(",").sort()) !==
+        JSON.stringify(options.orderedProfiles?env.profiles:[...env.profiles].sort())
       ) {
         complete = false;
         diagnostics.push({
@@ -391,6 +391,7 @@ export function resolveProperties(files, env, resources, source, ledger, options
       profiles: env.profiles,
       propertiesComplete: env.propertiesComplete,
       ...(imported?{importProfilePolicy:env.importProfilePolicy,importBindings:env.importBindings}:{}),
+      ...(options.orderedProfiles?{profileBindings:env.profileBindings}:{}),
       ...(mounted?{mountedFiles:env.mountedFiles,...(env.mountedImportBindings?{mountedImportBindings:env.mountedImportBindings}:{})}:{}),
       ...(options.environmentBindings ? {adapter:options.adapter??(options.placeholders?'spring-properties/3':'spring-properties/2'),environmentBindings:options.environmentBindings,propertyFiles:env.propertyFiles} : {}),
     }),

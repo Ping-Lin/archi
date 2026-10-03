@@ -50,6 +50,10 @@ const configurationV6=object({
   mountedFiles:{...unique(text),minItems:1,maxItems:64},
 });
 bindingSchema.properties.configuration={oneOf:[configurationV4,configurationV5,configurationV6,object({
+  ...configurationV5.properties,adapter:{const:'spring-properties/8'},
+  importProfilePolicy:{const:'explicit-variants-reviewed'},
+  profileBindings:{...list(object({from:fileRef,profile:{...text,pattern:'^[A-Za-z0-9_][A-Za-z0-9_-]*$'},file:{anyOf:[fileRef,{type:'null'}]}})),maxItems:1024},
+}),object({
   ...configurationV6.properties,adapter:{const:'spring-properties/7'},
   mountedImportBindings:{...list(object({from:text,location:{...text,maxLength:2048},file:text})),maxItems:128},
 })]};
@@ -183,6 +187,13 @@ export function validateSystem(manifest) {
       workloads.add(key);
       i.propertyFiles.forEach(file);
       if (i.configuration) {
+        const profiles=new Set();
+        for(const b of i.configuration.profileBindings??[]){
+          file(b.from);if(b.file!==null)file(b.file);
+          if(!(i.profiles.length?i.profiles:['default']).includes(b.profile))throw Error('Inactive profile binding');
+          const key=JSON.stringify([b.from.repository,b.from.path,b.profile]);
+          if(profiles.has(key))throw Error('Duplicate profile binding');profiles.add(key);
+        }
         for(const p of i.configuration.mountedFiles??[])if(!absoluteConfigPath(p)||!/\.(properties|yaml|yml)$/.test(p))throw Error('Invalid mounted configuration path');
         const mountedImports=new Set();
         for(const b of i.configuration.mountedImportBindings??[]){
