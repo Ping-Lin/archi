@@ -9,6 +9,10 @@ and two intentionally incomplete. The additive /5 import adapter extends the gat
 to fifteen cases: twelve value matches and three deliberately incomplete outcomes.
 Import scope and bindings are described in [ConfigData imports](config-imports.md).
 
+Mounted-file extension (2026-10-03): nineteen cases passed locally, with sixteen
+value matches and three deliberately incomplete outcomes. This verifies /6 additional
+file precedence on the same pinned Boot version, not Kubernetes deployment behavior.
+
 ```bash
 # Requires Java 17+ and Maven; first build downloads dependencies from Maven Central.
 npm run test:spring-boot
@@ -63,8 +67,11 @@ The /4 import case deliberately demonstrates its known capability gap instead of
 claiming support because an operator could manually flatten the imported file.
 
 The /5 cases verify explicit import trees without profile variants; they do not
-establish arbitrary ConfigData support. Next: add reviewed mounted-file and profile-aware
-import semantics; broaden the version matrix when target project patch versions are known.
+establish arbitrary ConfigData support. Four /6 cases cover explicit additional files,
+ordered properties/YAML, environment override and JSON override. Their temporary files
+represent ConfigMap contents; no Kubernetes projection or permission behavior is tested.
+Next: profile-aware and mounted-file import semantics; broaden the version matrix when
+target project patch versions are known.
 Do not generalize one successful version to all Boot 3 releases.
 
 Framework reference: [Spring Boot 3.5 external configuration](https://docs.spring.io/spring-boot/3.5/reference/features/external-config.html).

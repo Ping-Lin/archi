@@ -306,5 +306,39 @@ optional 目標缺少、循環、重複載入或缺少綁定都保持 incomplete
 舊版 /4 的 import 行為不變。畫面 **Configuration imports** 可查看來源鏈與狀態。
 
 可用 `node scripts/config-imports-fixture.mjs artifacts/imports-demo` 建立模擬案例。
-完整設定見 [ConfigData import bindings](config-imports.md)。掛載檔案與自動 profile
+完整設定見 [ConfigData import bindings](config-imports.md)。自動 profile
 載入仍未支援，不要將這個範圍當作完整 Spring ConfigData 相容性。
+
+## 多個 repositories 放哪裡？
+
+不用先摘出 properties。把需要分析的 source 與 deployment repos 正常 clone
+到同一個核准 workspace，例如 `/work/inputs/orders`、`/work/inputs/gateway`、
+`/work/inputs/deploy`；Archi 本身可以另外放在 `/work/archi`。
+`/work/inputs/system.json` 的 `repositories[]` 分別填 `id`、相對路徑
+（例如 `orders`）與完整 40 字元 commit SHA。各檔案再以
+`{"repository":"orders","path":"src/main/resources/application.properties"}` 引用。
+manifest 仍需提供 project/service、release、instance 與設定來源綁定，並非只列 repo。
+
+在 Archi 根目錄執行：
+
+```bash
+npm run analyze -- --root /work/inputs --system system.json --out /work/archi/artifacts/analysis
+npm run dev
+```
+
+`--root` 是輸入 workspace；`--system` 與相對 `--out` 都以它為基準。
+用絕對 `--out` 可避免寫錯位置。Archi 只讀 manifest 核准的 pinned Git objects，
+不會自行 clone、fetch、checkout 或讀 dirty working-tree 修改。指定 commit
+必須已存在本地。不同環境若要不同 revisions，目前用不同 manifest。
+
+## ConfigMap 掛載檔案
+
+`spring-properties/6` 的 `mountedFiles` 填的是 **container 內的完整路徑**，
+不是本機 clone 路徑。Helm 必須能追到 ConfigMap、volume、volumeMount，且有效的
+`SPRING_CONFIG_ADDITIONAL_LOCATION` 必須依序指向相同 `file:` 路徑。
+支援 properties/YAML、`items` 改名及精確檔案 `subPath`。
+畫面 **Mounted configuration files** 可查看來源與路徑；`projected` 不代表 runtime 已讀取。
+
+目前不支援 mounted file 內的 imports、自動 profile 變體、Secret/binaryData、
+subPathExpr 或未知掛載來源。缺資料會標 incomplete，不會據此建立 dependency。
+完整設定與範例見 [Mounted configuration](mounted-configuration.md)。

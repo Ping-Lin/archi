@@ -1,5 +1,8 @@
 # System composition — archi/system-v1alpha1
 
+`spring-properties/6` adds explicit mounted ConfigMap files; see
+[mounted configuration](mounted-configuration.md).
+
 `spring-properties/5` adds approved import file bindings to capture and input locks;
 see [explicit ConfigData imports](config-imports.md).
 

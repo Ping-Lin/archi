@@ -305,7 +305,7 @@ export function resolveProperties(files, env, resources, source, ledger, options
     (!options.environmentResolver && container?.envFrom?.length) ||
     container?.args?.length ||
     container?.command?.length ||
-    container?.volumeMounts?.length
+    (!options.mountResolver&&container?.volumeMounts?.length)
   ) {
     complete = false;
     diagnostics.push({
@@ -316,7 +316,13 @@ export function resolveProperties(files, env, resources, source, ledger, options
   }
   const resolvedEnvironment=options.environmentResolver?.(container,deployment,resources,env,ledger);
   if(resolvedEnvironment){diagnostics.push(...resolvedEnvironment.diagnostics);if(!resolvedEnvironment.complete)complete=false;}
-  const variables = resolvedEnvironment?.variables ?? [...(container?.env ?? [])];
+  let variables = resolvedEnvironment?.variables ?? [...(container?.env ?? [])];
+  const mounted=options.mountResolver?.(container,deployment,resources,env,variables,ledger);
+  if(mounted){
+    diagnostics.push(...mounted.diagnostics);if(!mounted.complete)complete=false;
+    for(const source of mounted.sources)add(source.mapping,source.file,'mounted_config',source.evidenceIds,mounted.factIds);
+    variables=variables.filter(v=>v.name!=='SPRING_CONFIG_ADDITIONAL_LOCATION');
+  }
   // Explicit env bindings override files; application JSON overrides both.
   if (options.environmentBindings) variables.sort((a,b) => Number(a.name==='SPRING_APPLICATION_JSON')-Number(b.name==='SPRING_APPLICATION_JSON'));
   for (const binding of options.environmentBindings ?? []) {
@@ -385,6 +391,7 @@ export function resolveProperties(files, env, resources, source, ledger, options
       profiles: env.profiles,
       propertiesComplete: env.propertiesComplete,
       ...(imported?{importProfilePolicy:env.importProfilePolicy,importBindings:env.importBindings}:{}),
+      ...(mounted?{mountedFiles:env.mountedFiles}:{}),
       ...(options.environmentBindings ? {adapter:options.adapter??(options.placeholders?'spring-properties/3':'spring-properties/2'),environmentBindings:options.environmentBindings,propertyFiles:env.propertyFiles} : {}),
     }),
   });
@@ -400,12 +407,12 @@ export function resolveProperties(files, env, resources, source, ledger, options
     env.id,
     {
       complete,
-      ...(resolvedEnvironment?{referenceFactIds:[...resolvedEnvironment.factIds,...(imported?.factIds??[])]}:{}),
+      ...(resolvedEnvironment?{referenceFactIds:[...resolvedEnvironment.factIds,...(imported?.factIds??[]),...(mounted?.factIds??[])]}:{}),
       profiles: env.profiles,
       assumption:
         "Reviewed closed property-source scope; not live configuration",
     },
     [policyEvidence],
   );
-  return { values, chains, complete, scopeFact, diagnostics, ...(resolvedEnvironment?{referenceFactIds:[...resolvedEnvironment.factIds,...(imported?.factIds??[])]}:{}) };
+  return { values, chains, complete, scopeFact, diagnostics, ...(resolvedEnvironment?{referenceFactIds:[...resolvedEnvironment.factIds,...(imported?.factIds??[]),...(mounted?.factIds??[])]}:{}) };
 }

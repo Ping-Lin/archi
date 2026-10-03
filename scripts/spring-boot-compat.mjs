@@ -25,6 +25,10 @@ const cases=[
   {id:'optional-present-import',files:[['application.properties',base+'spring.config.import=optional:extra.properties\n']],extra:[['extra.properties','peer.port=8200\n']],imports:[['application.properties','optional:extra.properties','extra.properties']],expected:['orders','8200']},
   {id:'optional-unbound-import',files:[['application.properties',base+'spring.config.import=optional:missing.properties\n']],imports:[],expected:['orders','7000'],unsupported:true},
   {id:'environment-over-import',files:[['application.properties',base+'spring.config.import=extra.properties\n']],extra:[['extra.properties','peer.port=8200\n']],imports:[['application.properties','extra.properties','extra.properties']],env:{PEER_PORT:'9000'},expected:['orders','9000']},
+  {id:'mounted-additional-file',files:[['application.properties',base]],mounted:[['routing.properties','peer.host=${routing.host}\nrouting.host=stock\npeer.port=8100\n']],expected:['stock','8100']},
+  {id:'ordered-mounted-files',files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8100\n'],['override.yaml','peer:\n  port: 8200\n']],expected:['orders','8200']},
+  {id:'environment-over-mounted',files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8100\n']],env:{PEER_PORT:'9000'},expected:['orders','9000']},
+  {id:'json-over-mounted-and-env',files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8100\n']],env:{PEER_PORT:'9000',SPRING_APPLICATION_JSON:'{"peer.port":"9090"}'},expected:['orders','9090']},
 ];
 const repo=fileURLToPath(new URL('../',import.meta.url));
 const pom=path.join(repo,'examples/spring-boot-compat/pom.xml');
@@ -34,17 +38,19 @@ const root=await mkdtemp(path.join(os.tmpdir(),'archi-boot-compat-')),results=[]
 try {
   for(const scenario of cases) {
     const cwd=path.join(root,scenario.id);await mkdir(cwd);
-    for(const [name,text] of [...scenario.files,...(scenario.extra??[])]){await mkdir(path.dirname(path.join(cwd,name)),{recursive:true});await writeFile(path.join(cwd,name),text);}
+    for(const [name,text] of [...scenario.files,...(scenario.extra??[]),...(scenario.mounted??[])]){await mkdir(path.dirname(path.join(cwd,name)),{recursive:true});await writeFile(path.join(cwd,name),text);}
     const variables={SPRING_PROFILES_ACTIVE:'qa',...(scenario.env??{})};
+    const mountedFiles=scenario.mounted?.map(([name])=>path.join(cwd,name));
+    if(mountedFiles)variables.SPRING_CONFIG_ADDITIONAL_LOCATION=mountedFiles.map(p=>'file:'+p).join(',');
     const run=spawnSync(process.env.JAVA_BIN??'java',['-jar',jar,'--spring.config.location='+scenario.files.map(([name])=>pathToFileURL(path.join(cwd,name)).href).join(',')],
       {cwd,env:{PATH:process.env.PATH,LANG:'C.UTF-8',...variables},encoding:'utf8',timeout:30000,maxBuffer:1024*1024});
     if(run.error)throw run.error;
     const observed=Object.fromEntries(run.stdout.split('\n').filter(l=>l.startsWith('ARCHI_PROBE:')).map(l=>{
       const [,key,value]=l.split(':');return [key,Buffer.from(value,'base64').toString('utf8')];
     }));
-    const properties=runAdapter(scenario.imports?'spring-properties/5':'spring-properties/4',{
-      files:new Map([...scenario.files,...(scenario.extra??[])]),env:{id:'qa',profiles:['qa'],propertiesComplete:true,propertyFiles:scenario.files.map(([name])=>name),environmentBindings:scenario.env?.PEER_PORT?[{name:'PEER_PORT',key:'peer.port'}]:[],...(scenario.imports?{importProfilePolicy:'no-variants-reviewed',importBindings:scenario.imports.map(([from,location,file])=>({from,location,file}))}:{})},
-      source:{service:'probe'},ledger:createLedger('qa','probe'),resources:[{kind:'Deployment',key:'probe',service:'probe',spec:{template:{spec:{containers:[{env:Object.entries(variables).map(([name,value])=>({name,value}))}]}}}}],
+    const properties=runAdapter(scenario.mounted?'spring-properties/6':scenario.imports?'spring-properties/5':'spring-properties/4',{
+      files:new Map([...scenario.files,...(scenario.extra??[])]),env:{id:'qa',cluster:'fixture',namespace:'probe',profiles:['qa'],propertiesComplete:true,propertyFiles:scenario.files.map(([name])=>name),environmentBindings:scenario.env?.PEER_PORT?[{name:'PEER_PORT',key:'peer.port'}]:[],...(scenario.imports||scenario.mounted?{importProfilePolicy:'no-variants-reviewed',importBindings:(scenario.imports??[]).map(([from,location,file])=>({from,location,file}))}:{}),...(mountedFiles?{mountedFiles}:{})},
+      source:{service:'probe'},ledger:createLedger('qa','probe'),resources:[{kind:'Deployment',key:'probe',service:'probe',spec:{template:{spec:{...(mountedFiles?{volumes:[{name:'config',configMap:{name:'settings'}}]}:{}),containers:[{env:Object.entries(variables).map(([name,value])=>({name,value})),...(mountedFiles?{volumeMounts:[{name:'config',mountPath:cwd}]}:{})}]}}}},...(mountedFiles?[{kind:'ConfigMap',key:'fixture||configmaps|probe|settings',data:Object.fromEntries(scenario.mounted)}]:[])],
     });
     if(scenario.bootFailure){
       assert.notEqual(run.status,0,scenario.id+' must fail in Spring');

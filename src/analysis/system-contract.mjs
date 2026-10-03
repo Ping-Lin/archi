@@ -1,4 +1,5 @@
 import Ajv from "ajv";
+import {absoluteConfigPath} from './mounted-config.mjs';
 
 export const SYSTEM_VERSION = "archi/system-v1alpha1";
 const text = { type: "string", minLength: 1 };
@@ -38,11 +39,15 @@ const configurationV4 = object({
   adapter: {enum:['spring-properties/2','spring-properties/3','spring-properties/4']},
   environmentBindings: list(object({name:{...text,pattern:'^[A-Za-z_][A-Za-z0-9_]*$'},key:text})),
 });
-bindingSchema.properties.configuration={oneOf:[configurationV4,object({
+const configurationV5=object({
   adapter:{const:'spring-properties/5'},
   environmentBindings:configurationV4.properties.environmentBindings,
   importProfilePolicy:{const:'no-variants-reviewed'},
   importBindings:{...list(object({from:fileRef,location:{...text,maxLength:2048},file:fileRef})),maxItems:128},
+});
+bindingSchema.properties.configuration={oneOf:[configurationV4,configurationV5,object({
+  ...configurationV5.properties,adapter:{const:'spring-properties/6'},
+  mountedFiles:{...unique(text),minItems:1,maxItems:64},
 })]};
 export const systemSchema = object({
   schemaVersion: { const: SYSTEM_VERSION },
@@ -174,6 +179,7 @@ export function validateSystem(manifest) {
       workloads.add(key);
       i.propertyFiles.forEach(file);
       if (i.configuration) {
+        for(const p of i.configuration.mountedFiles??[])if(!absoluteConfigPath(p)||!/\.(properties|yaml|yml)$/.test(p))throw Error('Invalid mounted configuration path');
         const imports=new Set();
         for(const b of i.configuration.importBindings??[]){
           file(b.from);file(b.file);

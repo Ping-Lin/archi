@@ -88,5 +88,6 @@ The previous /4 unsupported-import case remains to prevent silent compatibility 
 See [compatibility gate](spring-boot-compatibility.md).
 
 Framework reference: [Spring Boot ConfigData imports](https://docs.spring.io/spring-boot/3.5/reference/features/external-config.html).
-Remaining work: mounted ConfigMap file inputs, profile-aware import graphs and broader
+Mounted ConfigMap file inputs are available through [/6](mounted-configuration.md).
+Remaining work: profile-aware import graphs, mounted-file imports and broader
 Boot version/application validation. No general production-compatibility claim is made.

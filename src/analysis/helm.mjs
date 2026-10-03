@@ -72,6 +72,7 @@ export function parseManifest(
       instance: labels["app.kubernetes.io/instance"] ?? null,
       spec: value.spec ?? null,
       data: value.kind === "ConfigMap" ? (value.data ?? {}) : null,
+      ...(value.kind==='ConfigMap'&&value.binaryData!==undefined?{hasBinaryData:true}:{}),
       evidenceId,
     };
     resource.factId = ledger.fact(
