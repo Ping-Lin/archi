@@ -99,3 +99,8 @@ For an offline local rerun only, `ARCHI_BOOT_PROBE_JAR=/absolute/path/probe.jar`
 reuses an explicitly selected prebuilt probe and prints that Maven was skipped.
 The runner still verifies Boot 3.5.6 and both Environment/binding results. CI rejects
 this override and always rebuilds the probe from source. Reuse is not a build gate.
+## Multi-document extension
+
+`spring-properties/10` adds 12 document-order/activation scenarios, bringing the gate
+to 54 cases (50 matches and four deliberately incomplete). See
+[document activation](config-documents.md). Existing /4–/9 cases remain in the gate.

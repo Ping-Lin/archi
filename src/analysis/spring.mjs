@@ -263,7 +263,7 @@ export function resolveProperties(files, env, resources, source, ledger, options
   const imported=options.fileResolver?.(files,env,ledger);
   if(imported){
     diagnostics.push(...imported.diagnostics);if(!imported.complete)complete=false;
-    for(const source of imported.sources)add(source.mapping,source.file,'config_resolution',source.evidenceIds,imported.factIds);
+    for(const source of imported.sources)add(source.mapping,source.locator??source.file,'config_resolution',source.evidenceIds,imported.factIds);
   }
   for (const file of imported?[]:env.propertyFiles) {
     try {
@@ -320,7 +320,7 @@ export function resolveProperties(files, env, resources, source, ledger, options
   const mounted=options.mountResolver?.(container,deployment,resources,env,variables,ledger);
   if(mounted){
     diagnostics.push(...mounted.diagnostics);if(!mounted.complete)complete=false;
-    for(const source of mounted.sources)add(source.mapping,source.file,'mounted_config',source.evidenceIds,mounted.factIds);
+    for(const source of mounted.sources)add(source.mapping,source.locator??source.file,'mounted_config',source.evidenceIds,mounted.factIds);
     variables=variables.filter(v=>v.name!=='SPRING_CONFIG_ADDITIONAL_LOCATION');
   }
   // Explicit env bindings override files; application JSON overrides both.

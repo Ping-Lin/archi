@@ -63,5 +63,6 @@ The Boot gate is pinned to 3.5.6 / Java 17 and compares independently specified
 values against both Boot Environment and configuration binding. It is a bounded
 synthetic compatibility check, not full Spring or company-project certification.
 
-Remaining work includes multi-document activation,
-profile groups/includes, broader discovery and real internal-project acceptance.
+Multi-document profile activation is available through [/10](config-documents.md).
+Remaining work includes profile groups/includes, broader discovery and real
+internal-project acceptance.

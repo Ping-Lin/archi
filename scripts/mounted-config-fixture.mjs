@@ -5,7 +5,8 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parse,stringify} from 'yaml';
 
-export async function createMountedConfigFixture(destination,{imports=false,profiles=false}={}){
+export async function createMountedConfigFixture(destination,{imports=false,profiles=false,documents=false}={}){
+  if(documents)profiles=true;
   if(profiles)imports=true;
   const f=await createConfigImportsFixture(destination);
   const chart=path.join(f.root,'deploy/chart/templates/app.yaml');
@@ -53,6 +54,10 @@ data:
     const file=path.join(f.root,'deploy/values',env.id,'portal.yaml');
     const values=parse(await readFile(file,'utf8'));
     values.mountedConfigDemo=`gateway.peer.host=\${mounted.host}\nmounted.host=api.sales-${env.id}.svc.cluster.local\n`;
+    if(documents){
+      const profile=env.instances.find(i=>i.id==='portal').profiles[0];
+      values.mountedConfigDemo=`gateway.peer.host=unresolved.invalid\n#---\nspring.config.activate.on-profile=${profile}\n${values.mountedConfigDemo}#---\nspring.config.activate.on-profile=!${profile}\ngateway.peer.host=inactive.invalid\n`;
+    }
     if(imports)values.mountedConfigImports=true;
     if(profiles){values.mountedConfigProfiles=true;values.mountedProfileName=env.instances.find(i=>i.id==='portal').profiles[0];}
     await writeFile(file,stringify(values));
@@ -63,7 +68,7 @@ data:
     if(imports)instance.configuration={...instance.configuration,adapter:'spring-properties/7',mountedImportBindings:[{from:'/etc/archi-config/routing.properties',location:'leaf.properties',file:'/etc/archi-config/leaf.properties'}]};
     if(profiles){
       const c=instance.configuration;
-      c.adapter='spring-properties/9';c.importProfilePolicy='explicit-variants-reviewed';
+      c.adapter=documents?'spring-properties/10':'spring-properties/9';c.importProfilePolicy='explicit-variants-reviewed';
       c.profileBindings=[...instance.propertyFiles,...c.importBindings.map(b=>b.file)].flatMap(from=>instance.profiles.map(profile=>({from,profile,file:null})));
       c.mountedProfileBindings=instance.profiles.flatMap(profile=>[
         {from:'/etc/archi-config/routing.properties',profile,file:null},
@@ -84,6 +89,6 @@ data:
   return {...f,accepted};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  try{if(process.argv.length!==3&&!(process.argv.length===4&&['--imports','--profiles'].includes(process.argv[3])))throw Error('Usage: node scripts/mounted-config-fixture.mjs NEW_DESTINATION [--imports|--profiles]');console.log((await createMountedConfigFixture(path.resolve(process.argv[2]),{imports:process.argv[3]==='--imports',profiles:process.argv[3]==='--profiles'})).path);}
+  try{if(process.argv.length!==3&&!(process.argv.length===4&&['--imports','--profiles','--documents'].includes(process.argv[3])))throw Error('Usage: node scripts/mounted-config-fixture.mjs NEW_DESTINATION [--imports|--profiles|--documents]');console.log((await createMountedConfigFixture(path.resolve(process.argv[2]),{imports:process.argv[3]==='--imports',profiles:process.argv[3]==='--profiles',documents:process.argv[3]==='--documents'})).path);}
   catch(error){console.error(error.message);process.exitCode=1;}
 }

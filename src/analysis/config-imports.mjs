@@ -1,8 +1,9 @@
 import {parsePropertyFile} from './property-files.mjs';
 import {hash} from './contract.mjs';
+import {parseConfigDocuments} from './config-documents.mjs';
 
 // Bounded import trees over explicitly captured files, never a filesystem resolver.
-export function resolveConfigImports(files,env,ledger,{profiles=false}={}) {
+export function resolveConfigImports(files,env,ledger,{profiles=false,documents=false}={}) {
   const sources=[],diagnostics=[],factIds=[],seen=new Set(),active=new Set();
   const bindings=env.importBindings??[],used=new Set();
   const fail=(message)=>diagnostics.push({code:'CONFIG_IMPORT_INCOMPLETE',message});
@@ -21,7 +22,8 @@ export function resolveConfigImports(files,env,ledger,{profiles=false}={}) {
     if(seen.has(file)){fail(`Repeated config input requires unsupported import deduplication semantics: ${file}`);return;}
     seen.add(file);active.add(file);
     try {
-      const text=files.get(file),mapping=parsePropertyFile(file,text);
+      const text=files.get(file);
+      const docs=documents?parseConfigDocuments(file,text,activeProfiles):[{mapping:parsePropertyFile(file,text),active:true}];
       if(profiles&&expandProfiles)pendingProfiles.push({file,depth});
       const evidence=ledger.recordEvidence({type:'config_import_source',locator:file,contentHash:hash(text)});
       // Contradictory known input cannot be overridden by a completeness declaration.
@@ -29,8 +31,11 @@ export function resolveConfigImports(files,env,ledger,{profiles=false}={}) {
         const variant=file.replace(/(\.(?:properties|yaml|yml))$/,`-${profile}$1`);
         if(variant!==file&&files.has(variant))fail(`Known profile variant contradicts no-variants-reviewed policy: ${variant}`);
       }
-      const imports=mapping['spring.config.import'];delete mapping['spring.config.import'];
-      sources.push({file,mapping,evidenceIds:[evidence]});
+      for(const doc of docs){
+      if(documents)factIds.push(ledger.fact('configuration.document',`${file}#document=${doc.index}`,{from:file,index:doc.index,expression:doc.expression,active:doc.active},[evidence]));
+      if(!doc.active)continue;
+      const mapping=doc.mapping,imports=mapping['spring.config.import'];delete mapping['spring.config.import'];
+      sources.push({file,...(documents?{locator:`${file}#document=${doc.index}`} :{}),mapping,evidenceIds:[evidence]});
       const locations=imports===undefined?[]:imports.split(',').map(s=>s.trim());
       if(locations.length>64){fail(`Too many imports in ${file}`);return;}
       for(const location of locations){
@@ -42,9 +47,10 @@ export function resolveConfigImports(files,env,ledger,{profiles=false}={}) {
         const status=!supported?'unsupported':!binding?'unbound':!compatible?'format-mismatch':!files.has(binding.file)?'unavailable':'bound';
         const ev=[evidence];
         if(binding&&files.has(binding.file))ev.push(ledger.recordEvidence({type:'config_import_source',locator:binding.file,contentHash:hash(files.get(binding.file))}));
-        factIds.push(ledger.fact('configuration.import',`${file}#${location}`,{from:file,location,target:binding?.file??null,optional:location.startsWith('optional:'),status},ev));
+        factIds.push(ledger.fact('configuration.import',`${file}${documents?`#document=${doc.index}`:''}#${location}`,{from:file,...(documents?{document:doc.index}:{}),location,target:binding?.file??null,optional:location.startsWith('optional:'),status},ev));
         if(status!=='bound'){fail(`${file}: import ${location} is ${status}; optional does not authorize missing-input fallback`);continue;}
         used.add(binding);visit(binding.file,depth+1);
+      }
       }
     }catch(error){fail(`${file}: ${error.message}`);}
     finally{active.delete(file);}

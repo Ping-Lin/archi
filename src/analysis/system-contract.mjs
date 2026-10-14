@@ -64,7 +64,10 @@ const configurationV9=object({
   mountedImportBindings:configurationV7.properties.mountedImportBindings,
   mountedProfileBindings:{...list(object({from:text,profile:{...text,pattern:'^[A-Za-z0-9_][A-Za-z0-9_-]*$'},file:{anyOf:[text,{type:'null'}]}})),maxItems:1024},
 });
-bindingSchema.properties.configuration={oneOf:[configurationV4,configurationV5,configurationV6,configurationV7,configurationV8,configurationV9]};
+bindingSchema.properties.configuration={oneOf:[configurationV4,configurationV5,configurationV6,configurationV7,configurationV8,configurationV9,
+  object({...configurationV8.properties,adapter:{const:'spring-properties/10'}}),
+  object({...configurationV9.properties,adapter:{const:'spring-properties/10'}}),
+]};
 export const systemSchema = object({
   schemaVersion: { const: SYSTEM_VERSION },
   simulation: { type: "boolean" },

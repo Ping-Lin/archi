@@ -142,6 +142,9 @@ ordinary files and do not establish Kubernetes projection correctness.
 
 ## Mounted profiles (opt-in /9)
 
+For multi-document activation within mounted inputs, select
+[/10](config-documents.md) with the same explicit mounted bindings.
+
 `spring-properties/9` combines /8 repository profiles with /7 mounted imports.
 Select `importProfilePolicy: "explicit-variants-reviewed"`, retain /8
 `profileBindings`, and add `mountedProfileBindings` alongside `mountedFiles` and

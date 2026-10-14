@@ -6,7 +6,7 @@ const relative=p=>typeof p==='string'&&/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/
 const fields=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
 const mode=v=>v===undefined||(Number.isInteger(v)&&v>=0&&v<=511);
 const name=v=>typeof v==='string'&&/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(v)&&v.length<=253;
-export function resolveMountedConfig(container,deployment,resources,env,variables,ledger,{imports=false,profiles=false}={}){
+export function resolveMountedConfig(container,deployment,resources,env,variables,ledger,{imports=false,profiles=false,documents=false}={}){
   const diagnostics=[],sources=[],factIds=[],projected=new Map(),mountPaths=[];
   const fail=message=>diagnostics.push({code:'MOUNTED_CONFIG_INCOMPLETE',message});
   const mounts=container?.volumeMounts??[],volumes=deployment?.spec?.template?.spec?.volumes??[];
@@ -70,9 +70,9 @@ export function resolveMountedConfig(container,deployment,resources,env,variable
     }
     const scopedLedger=profiles?{...ledger,fact:(predicate,subject,value,evidenceIds)=>ledger.fact(predicate,subject,value,[...new Set([...evidenceIds,...(projected.get(value.from)?.evidenceIds??[]),...(projected.get(value.target)?.evidenceIds??[])])])}:ledger;
     // This map is captured render data, never the host/container filesystem.
-    const result=resolveConfigImports(new Map([...projected].map(([file,c])=>[file,c.text])),{...env,propertyFiles:paths,importBindings:bindings,profileBindings},scopedLedger,{profiles});
+    const result=resolveConfigImports(new Map([...projected].map(([file,c])=>[file,c.text])),{...env,propertyFiles:paths,importBindings:bindings,profileBindings},scopedLedger,{profiles,documents});
     diagnostics.push(...result.diagnostics);factIds.push(...result.factIds);
-    for(const source of result.sources)sources.push({...source,file:`mounted:${source.file}`,evidenceIds:[...source.evidenceIds,...(projected.get(source.file)?.evidenceIds??[])]});
+    for(const source of result.sources)sources.push({...source,file:`mounted:${source.file}`,...(source.locator?{locator:`mounted:${source.locator}`} :{}),evidenceIds:[...source.evidenceIds,...(projected.get(source.file)?.evidenceIds??[])]});
     for(const file of projected.keys())if(!reviewed.has(file))fail(`Unreviewed mounted file: ${file}`);
     return {sources,factIds,diagnostics,complete:diagnostics.length===0};
   }

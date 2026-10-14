@@ -1,5 +1,8 @@
 # System composition — archi/system-v1alpha1
 
+`spring-properties/10` adds bounded multi-document profile activation to repository
+and mounted input scopes. See [configuration documents](config-documents.md).
+
 `spring-properties/8` adds explicit repository profile variants; `/9` composes them
 with mounted profiles. See [profile configuration](profile-configuration.md) and
 [mounted profiles](mounted-configuration.md#mounted-profiles-opt-in-9).
