@@ -5,7 +5,8 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parse,stringify} from 'yaml';
 
-export async function createMountedConfigFixture(destination,{imports=false}={}){
+export async function createMountedConfigFixture(destination,{imports=false,profiles=false}={}){
+  if(profiles)imports=true;
   const f=await createConfigImportsFixture(destination);
   const chart=path.join(f.root,'deploy/chart/templates/app.yaml');
   let template=await readFile(chart,'utf8');
@@ -36,7 +37,12 @@ metadata:
 data:
 {{- if .Values.mountedConfigImports }}
   routing.properties: "gateway.peer.host=unresolved.invalid\\nspring.config.import=leaf.properties\\n"
+{{- if .Values.mountedConfigProfiles }}
+  leaf.properties: "gateway.peer.host=unresolved.invalid"
+  leaf-{{ .Values.mountedProfileName }}.properties: {{ .Values.mountedConfigDemo | quote }}
+{{- else }}
   leaf.properties: {{ .Values.mountedConfigDemo | quote }}
+{{- end }}
 {{- else }}
   routing.properties: {{ .Values.mountedConfigDemo | quote }}
 {{- end }}
@@ -48,12 +54,22 @@ data:
     const values=parse(await readFile(file,'utf8'));
     values.mountedConfigDemo=`gateway.peer.host=\${mounted.host}\nmounted.host=api.sales-${env.id}.svc.cluster.local\n`;
     if(imports)values.mountedConfigImports=true;
+    if(profiles){values.mountedConfigProfiles=true;values.mountedProfileName=env.instances.find(i=>i.id==='portal').profiles[0];}
     await writeFile(file,stringify(values));
     // The imported value is deliberately wrong: only the mounted override resolves it.
     await writeFile(path.join(f.root,'deploy',`routing-${env.id}.properties`),'gateway.peer.host=unresolved.invalid\n');
     const instance=env.instances.find(i=>i.id==='portal');
     instance.configuration={...instance.configuration,adapter:'spring-properties/6',mountedFiles:['/etc/archi-config/routing.properties']};
     if(imports)instance.configuration={...instance.configuration,adapter:'spring-properties/7',mountedImportBindings:[{from:'/etc/archi-config/routing.properties',location:'leaf.properties',file:'/etc/archi-config/leaf.properties'}]};
+    if(profiles){
+      const c=instance.configuration;
+      c.adapter='spring-properties/9';c.importProfilePolicy='explicit-variants-reviewed';
+      c.profileBindings=[...instance.propertyFiles,...c.importBindings.map(b=>b.file)].flatMap(from=>instance.profiles.map(profile=>({from,profile,file:null})));
+      c.mountedProfileBindings=instance.profiles.flatMap(profile=>[
+        {from:'/etc/archi-config/routing.properties',profile,file:null},
+        {from:'/etc/archi-config/leaf.properties',profile,file:`/etc/archi-config/leaf-${profile}.properties`},
+      ]);
+    }
   }
   const git=args=>execFileSync('git',['-C',path.join(f.root,'deploy'),...args],{encoding:'utf8',env:{...process.env,
     GIT_AUTHOR_NAME:'Archi fixture',GIT_AUTHOR_EMAIL:'fixture@example.invalid',GIT_COMMITTER_NAME:'Archi fixture',GIT_COMMITTER_EMAIL:'fixture@example.invalid',
@@ -68,6 +84,6 @@ data:
   return {...f,accepted};
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  try{if(process.argv.length!==3&&!(process.argv.length===4&&process.argv[3]==='--imports'))throw Error('Usage: node scripts/mounted-config-fixture.mjs NEW_DESTINATION [--imports]');console.log((await createMountedConfigFixture(path.resolve(process.argv[2]),{imports:process.argv[3]==='--imports'})).path);}
+  try{if(process.argv.length!==3&&!(process.argv.length===4&&['--imports','--profiles'].includes(process.argv[3])))throw Error('Usage: node scripts/mounted-config-fixture.mjs NEW_DESTINATION [--imports|--profiles]');console.log((await createMountedConfigFixture(path.resolve(process.argv[2]),{imports:process.argv[3]==='--imports',profiles:process.argv[3]==='--profiles'})).path);}
   catch(error){console.error(error.message);process.exitCode=1;}
 }

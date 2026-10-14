@@ -392,6 +392,7 @@ export function resolveProperties(files, env, resources, source, ledger, options
       propertiesComplete: env.propertiesComplete,
       ...(imported?{importProfilePolicy:env.importProfilePolicy,importBindings:env.importBindings}:{}),
       ...(options.orderedProfiles?{profileBindings:env.profileBindings}:{}),
+      ...(mounted&&options.orderedProfiles?{mountedProfileBindings:env.mountedProfileBindings}:{}),
       ...(mounted?{mountedFiles:env.mountedFiles,...(env.mountedImportBindings?{mountedImportBindings:env.mountedImportBindings}:{})}:{}),
       ...(options.environmentBindings ? {adapter:options.adapter??(options.placeholders?'spring-properties/3':'spring-properties/2'),environmentBindings:options.environmentBindings,propertyFiles:env.propertyFiles} : {}),
     }),

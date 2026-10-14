@@ -1,5 +1,9 @@
 # System composition — archi/system-v1alpha1
 
+`spring-properties/8` adds explicit repository profile variants; `/9` composes them
+with mounted profiles. See [profile configuration](profile-configuration.md) and
+[mounted profiles](mounted-configuration.md#mounted-profiles-opt-in-9).
+
 `spring-properties/7` adds explicit import bindings between captured mounted files;
 see [mounted imports](mounted-configuration.md#mounted-imports-opt-in-7).
 

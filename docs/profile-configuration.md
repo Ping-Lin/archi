@@ -1,8 +1,8 @@
 # Explicit profile-aware ConfigData
 
 `spring-properties/8` adds profile variants to the repository-backed /5 import
-adapter. It does not change /1–/7 and does not yet combine profile variants with
-mounted-file adapters /6–/7.
+adapter. It does not change /1–/7. `/9` combines these repository profiles with
+explicit mounted profiles; see [mounted configuration](mounted-configuration.md#mounted-profiles-opt-in-9).
 
 ```json
 {
@@ -63,5 +63,5 @@ The Boot gate is pinned to 3.5.6 / Java 17 and compares independently specified
 values against both Boot Environment and configuration binding. It is a bounded
 synthetic compatibility check, not full Spring or company-project certification.
 
-Remaining work includes mounted profile composition, multi-document activation,
+Remaining work includes multi-document activation,
 profile groups/includes, broader discovery and real internal-project acceptance.

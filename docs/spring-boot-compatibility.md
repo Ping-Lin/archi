@@ -87,3 +87,15 @@ variant precedence, ordered imports, reversed active profiles, mixed import tree
 imports declared by profile files, and default profiles. The complete gate has
 34 cases: 30 matched and four deliberately incomplete. See
 [profile configuration](profile-configuration.md) for the bounded contract.
+
+## Mounted-profile extension
+
+`spring-properties/9` adds eight cases: mounted roots/imports, reversed active-profile
+order, default variants, imports declared by a profile, mounted-over-repository
+precedence, environment overrides and JSON overrides. The gate now has 42 cases
+(38 matches, four intentionally incomplete).
+
+For an offline local rerun only, `ARCHI_BOOT_PROBE_JAR=/absolute/path/probe.jar`
+reuses an explicitly selected prebuilt probe and prints that Maven was skipped.
+The runner still verifies Boot 3.5.6 and both Environment/binding results. CI rejects
+this override and always rebuilds the probe from source. Reuse is not a build gate.

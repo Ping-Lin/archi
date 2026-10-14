@@ -6,7 +6,7 @@ const relative=p=>typeof p==='string'&&/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/
 const fields=(v,keys)=>v&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).every(k=>keys.includes(k));
 const mode=v=>v===undefined||(Number.isInteger(v)&&v>=0&&v<=511);
 const name=v=>typeof v==='string'&&/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(v)&&v.length<=253;
-export function resolveMountedConfig(container,deployment,resources,env,variables,ledger,{imports=false}={}){
+export function resolveMountedConfig(container,deployment,resources,env,variables,ledger,{imports=false,profiles=false}={}){
   const diagnostics=[],sources=[],factIds=[],projected=new Map(),mountPaths=[];
   const fail=message=>diagnostics.push({code:'MOUNTED_CONFIG_INCOMPLETE',message});
   const mounts=container?.volumeMounts??[],volumes=deployment?.spec?.template?.spec?.volumes??[];
@@ -59,8 +59,18 @@ export function resolveMountedConfig(container,deployment,resources,env,variable
       }
       reviewed.add(b.from);reviewed.add(b.file);
     }
+    const profileBindings=profiles?env.mountedProfileBindings??[]:[];
+    if(profiles){
+      if(!Array.isArray(profileBindings)||profileBindings.length>1024||profileBindings.some(b=>!fields(b,['from','profile','file'])||typeof b.profile!=='string'))return {sources,factIds,complete:false,diagnostics:[...diagnostics,{code:'MOUNTED_CONFIG_INCOMPLETE',message:'Invalid mounted profile bindings'}]};
+      for(const b of profileBindings){
+        const expected=typeof b.from==='string'?b.from.replace(/(\.(?:properties|yaml|yml))$/,`-${b.profile}$1`):null;
+        if(!absoluteConfigPath(b.from)||!/^[A-Za-z0-9_][A-Za-z0-9_-]*$/.test(b.profile)||(b.file!==null&&(!absoluteConfigPath(b.file)||b.file!==expected)))fail('Mounted profile binding must preserve the exact profile-specific container path');
+        reviewed.add(b.from);if(b.file!==null)reviewed.add(b.file);
+      }
+    }
+    const scopedLedger=profiles?{...ledger,fact:(predicate,subject,value,evidenceIds)=>ledger.fact(predicate,subject,value,[...new Set([...evidenceIds,...(projected.get(value.from)?.evidenceIds??[]),...(projected.get(value.target)?.evidenceIds??[])])])}:ledger;
     // This map is captured render data, never the host/container filesystem.
-    const result=resolveConfigImports(new Map([...projected].map(([file,c])=>[file,c.text])),{...env,propertyFiles:paths,importBindings:bindings},ledger);
+    const result=resolveConfigImports(new Map([...projected].map(([file,c])=>[file,c.text])),{...env,propertyFiles:paths,importBindings:bindings,profileBindings},scopedLedger,{profiles});
     diagnostics.push(...result.diagnostics);factIds.push(...result.factIds);
     for(const source of result.sources)sources.push({...source,file:`mounted:${source.file}`,evidenceIds:[...source.evidenceIds,...(projected.get(source.file)?.evidenceIds??[])]});
     for(const file of projected.keys())if(!reviewed.has(file))fail(`Unreviewed mounted file: ${file}`);

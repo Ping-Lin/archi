@@ -137,6 +137,7 @@ export async function analyzeSystem(
           profileBindings:instance.configuration?.profileBindings?.map(b=>({from:refPath(b.from),profile:b.profile,file:b.file===null?null:refPath(b.file)})),
           mountedFiles:instance.configuration?.mountedFiles,
           mountedImportBindings:instance.configuration?.mountedImportBindings,
+          mountedProfileBindings:instance.configuration?.mountedProfileBindings,
           importBindings:instance.configuration?.importBindings?.map(b=>({from:refPath(b.from),location:b.location,file:refPath(b.file)})),
           observations: null,
           targets: [],

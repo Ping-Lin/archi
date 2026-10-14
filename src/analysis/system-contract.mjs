@@ -49,14 +49,22 @@ const configurationV6=object({
   ...configurationV5.properties,adapter:{const:'spring-properties/6'},
   mountedFiles:{...unique(text),minItems:1,maxItems:64},
 });
-bindingSchema.properties.configuration={oneOf:[configurationV4,configurationV5,configurationV6,object({
+const configurationV8=object({
   ...configurationV5.properties,adapter:{const:'spring-properties/8'},
   importProfilePolicy:{const:'explicit-variants-reviewed'},
   profileBindings:{...list(object({from:fileRef,profile:{...text,pattern:'^[A-Za-z0-9_][A-Za-z0-9_-]*$'},file:{anyOf:[fileRef,{type:'null'}]}})),maxItems:1024},
-}),object({
+});
+const configurationV7=object({
   ...configurationV6.properties,adapter:{const:'spring-properties/7'},
   mountedImportBindings:{...list(object({from:text,location:{...text,maxLength:2048},file:text})),maxItems:128},
-})]};
+});
+const configurationV9=object({
+  ...configurationV8.properties,adapter:{const:'spring-properties/9'},
+  mountedFiles:configurationV6.properties.mountedFiles,
+  mountedImportBindings:configurationV7.properties.mountedImportBindings,
+  mountedProfileBindings:{...list(object({from:text,profile:{...text,pattern:'^[A-Za-z0-9_][A-Za-z0-9_-]*$'},file:{anyOf:[text,{type:'null'}]}})),maxItems:1024},
+});
+bindingSchema.properties.configuration={oneOf:[configurationV4,configurationV5,configurationV6,configurationV7,configurationV8,configurationV9]};
 export const systemSchema = object({
   schemaVersion: { const: SYSTEM_VERSION },
   simulation: { type: "boolean" },
@@ -187,6 +195,14 @@ export function validateSystem(manifest) {
       workloads.add(key);
       i.propertyFiles.forEach(file);
       if (i.configuration) {
+        const mountedProfiles=new Set();
+        for(const b of i.configuration.mountedProfileBindings??[]){
+          if(![b.from,...(b.file===null?[]:[b.file])].every(p=>absoluteConfigPath(p)&&/\.(properties|yaml|yml)$/.test(p)))throw Error('Invalid mounted profile path');
+          if(!(i.profiles.length?i.profiles:['default']).includes(b.profile))throw Error('Inactive mounted profile binding');
+          if(b.file!==null&&b.file!==b.from.replace(/(\.(?:properties|yaml|yml))$/,`-${b.profile}$1`))throw Error('Redirected mounted profile path');
+          const key=JSON.stringify([b.from,b.profile]);
+          if(mountedProfiles.has(key))throw Error('Duplicate mounted profile binding');mountedProfiles.add(key);
+        }
         const profiles=new Set();
         for(const b of i.configuration.profileBindings??[]){
           file(b.from);if(b.file!==null)file(b.file);

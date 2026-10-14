@@ -1,5 +1,6 @@
 import {execFileSync,spawnSync} from 'node:child_process';
-import {mkdtemp,writeFile,rm,mkdir} from 'node:fs/promises';
+import {mkdtemp,writeFile,rm,mkdir,readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import path from 'node:path';
 import os from 'node:os';
 import assert from 'node:assert/strict';
@@ -10,6 +11,14 @@ import {createLedger} from '../src/analysis/contract.mjs';
 // Handwritten expected values are independent of both evaluators.
 const base='peer.host=orders\npeer.port=7000\n';
 const cases=[
+  {id:'mounted-profile-root',profiles:['qa'],profileBases:['application.properties'],files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8100'],['routing-qa.properties','peer.port=8200']],mountedRoots:['routing.properties'],mountedProfileBases:['routing.properties'],expected:['orders','8200']},
+  {id:'mounted-profile-import',profiles:['qa'],profileBases:['application.properties'],files:[['application.properties',base]],mounted:[['routing.properties','spring.config.import=leaf.properties'],['routing-qa.properties','peer.port=8100'],['leaf.properties','peer.port=8200'],['leaf-qa.properties','peer.port=8300']],mountedRoots:['routing.properties'],mountedImports:[['routing.properties','leaf.properties','leaf.properties']],mountedProfileBases:['routing.properties','leaf.properties'],expected:['orders','8300']},
+  {id:'mounted-profile-order',profiles:['blue','qa'],profileBases:['application.properties'],files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8000'],['routing-qa.properties','peer.port=8100'],['routing-blue.properties','peer.port=8200']],mountedRoots:['routing.properties'],mountedProfileBases:['routing.properties'],expected:['orders','8100']},
+  {id:'mounted-profile-default',profiles:[],profileBases:['application.properties'],files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8000'],['routing-default.properties','peer.port=8400']],mountedRoots:['routing.properties'],mountedProfileBases:['routing.properties'],expected:['orders','8400']},
+  {id:'mounted-profile-declared-import',profiles:['qa'],profileBases:['application.properties'],files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8000'],['routing-qa.properties','spring.config.import=leaf.yaml'],['leaf.yaml','peer:\n  port: 8500']],mountedRoots:['routing.properties'],mountedImports:[['routing-qa.properties','leaf.yaml','leaf.yaml']],mountedProfileBases:['routing.properties','leaf.yaml'],expected:['orders','8500']},
+  {id:'mounted-base-over-repository-profile',profiles:['qa'],profileBases:['application.properties'],files:[['application.properties',base]],extra:[['application-qa.properties','peer.port=9900']],mounted:[['routing.properties','peer.port=8600']],mountedRoots:['routing.properties'],mountedProfileBases:['routing.properties'],expected:['orders','8600']},
+  {id:'environment-over-mounted-profile',profiles:['qa'],profileBases:['application.properties'],files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8000'],['routing-qa.properties','peer.port=8100']],mountedRoots:['routing.properties'],mountedProfileBases:['routing.properties'],env:{PEER_PORT:'9000'},expected:['orders','9000']},
+  {id:'json-over-mounted-profile',profiles:['qa'],profileBases:['application.properties'],files:[['application.properties',base]],mounted:[['routing.properties','peer.port=8000'],['routing-qa.properties','peer.port=8100']],mountedRoots:['routing.properties'],mountedProfileBases:['routing.properties'],env:{PEER_PORT:'9000',SPRING_APPLICATION_JSON:'{"peer.port":"9090"}'},expected:['orders','9090']},
   {id:'profile-mixed-import-trees',profiles:['qa','blue'],files:[['application.properties',base+'spring.config.import=extra.properties']],extra:[['extra.properties','peer.port=7100'],['extra-qa.properties','peer.port=7200'],['application-blue.properties','spring.config.import=leaf.properties'],['leaf.properties','peer.port=7500']],imports:[['application.properties','extra.properties','extra.properties'],['application-blue.properties','leaf.properties','leaf.properties']],profileBases:['application.properties','extra.properties','leaf.properties'],expected:['orders','7200']},
   {id:'profile-early-file-import',profiles:['qa','blue'],files:[['application.properties',base]],extra:[['application-qa.properties','spring.config.import=leaf.properties'],['application-blue.properties','peer.port=7400'],['leaf.properties','peer.port=7500']],imports:[['application-qa.properties','leaf.properties','leaf.properties']],profileBases:['application.properties','leaf.properties'],expected:['orders','7400']},
   {id:'profile-root-and-import',profiles:['qa','blue'],files:[['application.properties',base+'spring.config.import=extra.properties']],extra:[['extra.properties','peer.port=7100'],['extra-qa.properties','peer.port=7200'],['application-qa.properties','peer.port=7300'],['application-blue.properties','peer.port=7400']],imports:[['application.properties','extra.properties','extra.properties']],profileBases:['application.properties','extra.properties'],expected:['orders','7200']},
@@ -47,8 +56,11 @@ const cases=[
 ];
 const repo=fileURLToPath(new URL('../',import.meta.url));
 const pom=path.join(repo,'examples/spring-boot-compat/pom.xml');
-execFileSync(process.env.MVN_BIN??'mvn',['-B','-q',...(process.env.MVN_SETTINGS?['--settings',process.env.MVN_SETTINGS]:[]),'-f',pom,'package','-DskipTests'],{stdio:'inherit',timeout:240000});
-const jar=path.join(path.dirname(pom),'target/configuration-probe-1.0.0.jar');
+if(process.env.CI&&process.env.ARCHI_BOOT_PROBE_JAR)throw Error('CI must rebuild the Boot probe');
+if(!process.env.ARCHI_BOOT_PROBE_JAR)execFileSync(process.env.MVN_BIN??'mvn',['-B','-q',...(process.env.MVN_SETTINGS?['--settings',process.env.MVN_SETTINGS]:[]),'-f',pom,'package','-DskipTests'],{stdio:'inherit',timeout:240000});
+else console.log('Using explicit prebuilt Boot probe; Maven rebuild skipped');
+const jar=process.env.ARCHI_BOOT_PROBE_JAR?path.resolve(process.env.ARCHI_BOOT_PROBE_JAR):path.join(path.dirname(pom),'target/configuration-probe-1.0.0.jar');
+const probe={build:process.env.ARCHI_BOOT_PROBE_JAR?'prebuilt-reused':'maven-rebuilt',sha256:createHash('sha256').update(await readFile(jar)).digest('hex')};
 const root=await mkdtemp(path.join(os.tmpdir(),'archi-boot-compat-')),results=[];
 try {
   for(const scenario of cases) {
@@ -67,8 +79,12 @@ try {
       const variant=from.replace(/(\.(?:properties|ya?ml))$/,`-${profile}$1`);
       return {from,profile,file:[...scenario.files,...(scenario.extra??[])].some(([name])=>name===variant)?variant:null};
     }));
-    const properties=runAdapter(scenario.profileBases?'spring-properties/8':scenario.mountedImports?'spring-properties/7':scenario.mounted?'spring-properties/6':scenario.imports?'spring-properties/5':'spring-properties/4',{
-      files:new Map([...scenario.files,...(scenario.extra??[])]),env:{id:'qa',cluster:'fixture',namespace:'probe',profiles:scenario.profiles??['qa'],propertiesComplete:true,propertyFiles:scenario.files.map(([name])=>name),environmentBindings:scenario.env?.PEER_PORT?[{name:'PEER_PORT',key:'peer.port'}]:[],...(scenario.imports||scenario.mounted||scenario.profileBases?{importProfilePolicy:scenario.profileBases?'explicit-variants-reviewed':'no-variants-reviewed',importBindings:(scenario.imports??[]).map(([from,location,file])=>({from,location,file}))}:{}),...(profileBindings?{profileBindings}:{}),...(mountedFiles?{mountedFiles}:{}),...(scenario.mountedImports?{mountedImportBindings:scenario.mountedImports.map(([from,location,file])=>({from:path.join(cwd,from),location,file:path.join(cwd,file)}))}:{})},
+    const mountedProfileBindings=scenario.mountedProfileBases?.flatMap(from=>(scenario.profiles.length?scenario.profiles:['default']).map(profile=>{
+      const variant=from.replace(/(\.(?:properties|ya?ml))$/,`-${profile}$1`);
+      return {from:path.join(cwd,from),profile,file:scenario.mounted.some(([name])=>name===variant)?path.join(cwd,variant):null};
+    }));
+    const properties=runAdapter(scenario.mountedProfileBases?'spring-properties/9':scenario.profileBases?'spring-properties/8':scenario.mountedImports?'spring-properties/7':scenario.mounted?'spring-properties/6':scenario.imports?'spring-properties/5':'spring-properties/4',{
+      files:new Map([...scenario.files,...(scenario.extra??[])]),env:{id:'qa',cluster:'fixture',namespace:'probe',profiles:scenario.profiles??['qa'],propertiesComplete:true,propertyFiles:scenario.files.map(([name])=>name),environmentBindings:scenario.env?.PEER_PORT?[{name:'PEER_PORT',key:'peer.port'}]:[],...(scenario.imports||scenario.mounted||scenario.profileBases?{importProfilePolicy:scenario.profileBases?'explicit-variants-reviewed':'no-variants-reviewed',importBindings:(scenario.imports??[]).map(([from,location,file])=>({from,location,file}))}:{}),...(profileBindings?{profileBindings}:{}),...(mountedFiles?{mountedFiles}:{}),...(mountedProfileBindings?{mountedProfileBindings}:{}),...(scenario.mountedImports?{mountedImportBindings:scenario.mountedImports.map(([from,location,file])=>({from:path.join(cwd,from),location,file:path.join(cwd,file)}))}:{})},
       source:{service:'probe'},ledger:createLedger('qa','probe'),resources:[{kind:'Deployment',key:'probe',service:'probe',spec:{template:{spec:{...(mountedFiles?{volumes:[{name:'config',configMap:{name:'settings'}}]}:{}),containers:[{env:Object.entries(variables).map(([name,value])=>({name,value})),...(mountedFiles?{volumeMounts:[{name:'config',mountPath:cwd}]}:{})}]}}}},...(mountedFiles?[{kind:'ConfigMap',key:'fixture||configmaps|probe|settings',data:Object.fromEntries(scenario.mounted)}]:[])],
     });
     if(scenario.bootFailure){
@@ -86,5 +102,5 @@ try {
     console.log(scenario.id+': '+results.at(-1).status);
   }
   const out=path.join(repo,'artifacts/spring-boot-compat');await mkdir(out,{recursive:true});
-  await writeFile(path.join(out,'report.json'),JSON.stringify({completedAt:new Date().toISOString(),springBoot:'3.5.6',java:spawnSync(process.env.JAVA_BIN??'java',['-version'],{encoding:'utf8'}).stderr.trim(),scope:'Configuration values only; synthetic inputs; no Kubernetes or network client execution',results},null,2)+'\n');
+  await writeFile(path.join(out,'report.json'),JSON.stringify({probe,completedAt:new Date().toISOString(),springBoot:'3.5.6',java:spawnSync(process.env.JAVA_BIN??'java',['-version'],{encoding:'utf8'}).stderr.trim(),scope:'Configuration values only; synthetic inputs; no Kubernetes or network client execution',results},null,2)+'\n');
 }finally{await rm(root,{recursive:true,force:true});}

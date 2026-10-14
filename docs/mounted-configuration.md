@@ -139,3 +139,53 @@ The additional synthetic scenario requires the imported ConfigMap file to resolv
 the QA gRPC host. Independent Boot cases cover bound, nested, ordered, optional-present,
 optional-missing and environment-over-import behavior. These still use temporary
 ordinary files and do not establish Kubernetes projection correctness.
+
+## Mounted profiles (opt-in /9)
+
+`spring-properties/9` combines /8 repository profiles with /7 mounted imports.
+Select `importProfilePolicy: "explicit-variants-reviewed"`, retain /8
+`profileBindings`, and add `mountedProfileBindings` alongside `mountedFiles` and
+`mountedImportBindings`:
+
+```json
+{
+  "mountedFiles": ["/config/application.properties"],
+  "mountedImportBindings": [],
+  "mountedProfileBindings": [
+    {
+      "from": "/config/application.properties",
+      "profile": "qa",
+      "file": "/config/application-qa.properties"
+    }
+  ]
+}
+```
+
+This is a configuration fragment, not a complete manifest. Every reached mounted
+base/import file needs one binding for each active profile (or `default` when no
+profile is active). `file: null` is explicit reviewed absence, not a missing-file
+fallback. A projected conventional variant contradicting that declaration blocks
+complete resolution. Unknown or unused files and bindings remain incomplete.
+
+Non-null targets must equal the exact profile-specific **container** path, including
+extension. ConfigMap key remapping and `subPath` are resolved before this check;
+arbitrary repository-to-file remapping is not permitted for mounted profile paths.
+The additional-location variable continues to list only ordered base paths, not
+variants. Profile order must match the rendered active-profile environment variable.
+
+Mounted sources override repository sources; mapped environment and application
+JSON override both. Profile and import facts retain the rendered workload/ConfigMap
+evidence as well as file-content evidence. No container filesystem or cluster is read.
+Previous adapters remain unchanged. Secret/projected volumes, multi-document
+activation, profile groups/includes and general location discovery remain unsupported.
+
+Reproduce the synthetic cross-repository fixture with:
+
+```bash
+node scripts/mounted-config-fixture.mjs artifacts/mounted-profiles-demo --profiles
+npm run analyze -- --root artifacts/mounted-profiles-demo --system accepted.json --out ../analysis
+```
+
+The fixture deliberately resolves its QA endpoints only through the mounted profile
+file; production remains unreviewed. Tests cover dirty-input isolation, deterministic
+snapshots, render provenance, and suppression of edges when a binding is missing.

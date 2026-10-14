@@ -4,7 +4,7 @@ import {stringify} from 'yaml';
 import {runAdapter} from '../../src/analysis/adapters.mjs';
 import {createLedger} from '../../src/analysis/contract.mjs';
 import {parseManifest} from '../../src/analysis/helm.mjs';
-import {mkdtemp,rm} from 'node:fs/promises';
+import {mkdtemp,rm,readFile,writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
@@ -71,6 +71,63 @@ function importContext(edit=()=>{}){
     edit(c);
   });
 }
+function profileContext(edit=()=>{}){
+  return importContext(c=>{
+    c.env.importProfilePolicy='explicit-variants-reviewed';
+    c.env.profileBindings=[{from:'base.properties',profile:'qa',file:null}];
+    c.env.mountedProfileBindings=[{from:'/config/app.properties',profile:'qa',file:null},{from:'/config/leaf.properties',profile:'qa',file:'/config/leaf-qa.properties'}];
+    c.configMap.data['leaf-qa.properties']='peer.port=8200';
+    edit(c);
+  });
+}
+test('v9 resolves mounted import profiles and attaches render evidence',()=>{
+  const c=profileContext(),p=runAdapter('spring-properties/9',c);
+  assert.equal(p.complete,true,JSON.stringify(p.diagnostics));assert.equal(p.values['peer.port'],'8200');
+  const fact=c.ledger.facts.find(f=>f.predicate==='configuration.profile'&&f.value.target==='/config/leaf-qa.properties');
+  assert.ok(p.referenceFactIds.includes(fact.id));
+  const cm=c.resources.find(r=>r.kind==='ConfigMap');assert.ok(fact.evidenceIds.includes(cm.evidenceId));
+  assert.equal(runAdapter('spring-properties/7',profileContext()).complete,false);
+  assert.equal(runAdapter('spring-properties/8',profileContext()).complete,false);
+});
+test('v9 preserves profile order and environment/JSON override precedence',()=>{
+  for(const level of [0,1,2]){
+    const c=profileContext(({env,container,configMap})=>{
+      env.profiles=['qa','blue'];container.env[0].value='qa,blue';
+      env.profileBindings.push({from:'base.properties',profile:'blue',file:null});
+      env.mountedProfileBindings.push({from:'/config/app.properties',profile:'blue',file:null},{from:'/config/leaf.properties',profile:'blue',file:'/config/leaf-blue.properties'});
+      configMap.data['leaf-blue.properties']='peer.port=8300';
+      if(level>=1){env.environmentBindings=[{name:'PEER_PORT',key:'peer.port'}];container.env.push({name:'PEER_PORT',value:'9000'});}
+      if(level===2)container.env.push({name:'SPRING_APPLICATION_JSON',value:'{"peer.port":"9090"}'});
+    });
+    const p=runAdapter('spring-properties/9',c);assert.equal(p.complete,true,JSON.stringify(p.diagnostics));assert.equal(p.values['peer.port'],['8300','9000','9090'][level]);
+    c.resources.find(r=>r.kind==='Deployment').spec.template.spec.containers[0].env[0].value='blue,qa';
+    assert.equal(runAdapter('spring-properties/9',c).complete,false);
+  }
+});
+test('v9 rejects missing, redirected, duplicate, unused and contradictory profile inputs',()=>{
+  for(const edit of [
+    ({env})=>env.mountedProfileBindings=[],
+    ({env})=>env.mountedProfileBindings[1].file=null,
+    ({env})=>env.mountedProfileBindings[1].file='/config/leaf.properties',
+    ({env})=>env.mountedProfileBindings[1].file='/other/leaf-qa.properties',
+    ({env})=>env.mountedProfileBindings.push({...env.mountedProfileBindings[1]}),
+    ({env})=>env.mountedProfileBindings.push({from:'/config/unused.properties',profile:'qa',file:null}),
+    ({env})=>env.mountedProfileBindings[1].profile='inactive',
+    ({configMap})=>delete configMap.data['leaf-qa.properties'],
+    ({configMap})=>configMap.data['leaf-qa.properties']='spring.profiles.include=other',
+    ({configMap})=>configMap.data['unreviewed.properties']='peer.port=9999',
+  ])assert.equal(runAdapter('spring-properties/9',profileContext(edit)).complete,false,edit.toString());
+});
+test('v9 permits default variants, remapped keys and explicit file subPath projections',()=>{
+  const c=profileContext(({env,container,volume,configMap})=>{
+    env.profiles=[];container.env[0].value='';env.profileBindings[0].profile='default';
+    env.mountedImportBindings=[];env.mountedProfileBindings=[{from:'/config/app.properties',profile:'default',file:'/config/app-default.properties'}];
+    configMap.data={base:'peer.port=8000',variant:'peer.port=8400'};
+    volume.configMap.items=[{key:'base',path:'base-data'},{key:'variant',path:'profile-data'}];
+    container.volumeMounts=[{name:'config',mountPath:'/config/app.properties',subPath:'base-data'},{name:'config',mountPath:'/config/app-default.properties',subPath:'profile-data'}];
+  });
+  const p=runAdapter('spring-properties/9',c);assert.equal(p.complete,true,JSON.stringify(p.diagnostics));assert.equal(p.values['peer.port'],'8400');
+});
 test('v7 mounted imports override declaring files with mount and import evidence',()=>{
   const c=importContext(),p=runAdapter('spring-properties/7',c);
   assert.equal(p.complete,true,JSON.stringify(p.diagnostics));assert.equal(p.values['peer.host'],'orders');assert.equal(p.values['peer.port'],'8100');
@@ -172,5 +229,38 @@ test('v7 composes mounted import trees with deterministic system snapshots',{ski
     assert.ok(imported);
     const candidate=qa.candidates.find(c=>c.source==='portal');
     assert.ok(qa.resolutions.find(r=>r.id===candidate.resolutionId).inputFactIds.includes(imported.id));
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+test('v9 schema validates profile mappings independently of Helm',async()=>{
+  const root=await mkdtemp(path.join(tmpdir(),'archi-mounted-profile-schema-'));
+  try{
+    const f=await createMountedConfigFixture(path.join(root,'inputs'),{profiles:true});
+    validateSystem(f.accepted);
+    for(const edit of [
+      c=>c.mountedProfileBindings[1].file='/other/leaf-qa.properties',
+      c=>c.mountedProfileBindings[0].from='../escape.properties',
+      c=>c.mountedProfileBindings[0].profile='inactive',
+      c=>c.mountedProfileBindings.push({...c.mountedProfileBindings[0]}),
+      c=>delete c.mountedProfileBindings,
+      c=>c.adapter='spring-properties/8',
+    ]){
+      const m=structuredClone(f.accepted);edit(m.environments[0].instances.find(i=>i.id==='portal').configuration);assert.throws(()=>validateSystem(m));
+    }
+  }finally{await rm(root,{recursive:true,force:true});}
+});
+test('v9 mounted profiles compose pinned evidence; missing bindings suppress edges',{skip:!helm},async()=>{
+  const root=await mkdtemp(path.join(tmpdir(),'archi-mounted-profiles-'));
+  try{
+    const f=await createMountedConfigFixture(path.join(root,'inputs'),{profiles:true});
+    const a=await analyzeSystem(f.root,'accepted.json');
+    const chart=path.join(f.root,'deploy/chart/templates/app.yaml');await writeFile(chart,(await readFile(chart,'utf8')).replaceAll('unresolved.invalid','dirty.invalid'));
+    const b=await analyzeSystem(f.root,'accepted.json');assert.deepEqual(a.snapshots.map(s=>s.contentHash),b.snapshots.map(s=>s.contentHash));
+    const qa=a.snapshots.find(s=>s.environment==='qa');assert.equal(qa.dependencies.filter(d=>d.source==='portal'&&d.target==='orders').length,2);
+    const profile=qa.facts.find(f=>f.predicate==='configuration.profile'&&f.value.target==='/etc/archi-config/leaf-qa.properties');assert.ok(profile);
+    assert.ok(profile.evidenceIds.some(id=>qa.evidence.find(e=>e.id===id)?.type==='helm_render'));
+    assert.equal(a.snapshots.find(s=>s.environment==='production').dependencies.some(d=>d.source==='portal'),false);
+    f.accepted.environments[0].instances.find(i=>i.id==='portal').configuration.mountedProfileBindings.pop();
+    await writeFile(path.join(f.root,'incomplete.json'),JSON.stringify(f.accepted));
+    const incomplete=await analyzeSystem(f.root,'incomplete.json');assert.equal(incomplete.snapshots[0].dependencies.some(d=>d.source==='portal'),false);
   }finally{await rm(root,{recursive:true,force:true});}
 });
