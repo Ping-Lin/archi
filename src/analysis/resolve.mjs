@@ -119,6 +119,8 @@ export function resolveCandidates(
       ...(candidate.endpointBinding ? endpointKeys(candidate.endpointBinding).flatMap(k=>properties.chains[k]??[]) : properties.chains[candidate.key] ?? []),
     ];
     const reasons = [...candidate.unsupported];
+    if (candidate.endpointMeaning === 'configured-base-url')
+      reasons.push('Configured HTTP client base URL only; request URI overrides, later mutation, redirects, proxies and actual calls are not analyzed');
     let eligibility = "enabled";
     if (candidate.unsupported.length || !properties.complete)
       eligibility = "unknown";
@@ -160,6 +162,11 @@ export function resolveCandidates(
       );
     const value = candidate.endpointBinding ? Object.fromEntries(endpointKeys(candidate.endpointBinding).map(k=>[k,properties.values[k]??null])) : properties.values[candidate.key] ?? null;
     let url = properties.complete ? (candidate.endpointAdapter==='grpc-endpoint/1' ? resolveGrpcEndpoint(candidate.endpointBinding,properties.values) : candidate.endpointBinding ? resolveEndpointBinding(candidate.endpointBinding,candidate.extraction.protocol,properties.values) : endpoint(value)) : null;
+    if (candidate.endpointMeaning === 'configured-base-url' && (!url || !['http:', 'https:'].includes(new URL(url).protocol))) {
+      url = null;
+      if (eligibility !== 'disabled') eligibility = 'unknown';
+      reasons.push('HTTP factory requires a supported absolute HTTP/HTTPS base URL');
+    }
     if(candidate.endpointBinding) {
       const bindingEvidence=[...new Set(ledger.facts.filter(f=>facts.includes(f.id)).flatMap(f=>f.evidenceIds))];
       facts.push(ledger.fact('endpoint.binding',candidate.id,{binding:candidate.endpointBinding,protocol:candidate.extraction.protocol,url,...(candidate.endpointAdapter?{adapter:candidate.endpointAdapter,transportSecurity:'unknown'}:{})},bindingEvidence));
@@ -257,7 +264,9 @@ export function resolveCandidates(
       [...new Set(facts)],
       outcome,
       reasons,
-      targetResolver ? (candidate.endpointAdapter==='grpc-endpoint/1'?'grpc-endpoint/1 + deployment-endpoint/1':candidate.endpointBinding ? 'endpoint-binding/1 + deployment-endpoint/1' : "deployment-endpoint/1") : undefined,
+      candidate.sourceAdapter === 'spring-http-factory/1'
+        ? 'spring-http-factory/1' + (targetResolver ? ' + deployment-endpoint/1' : '')
+        : targetResolver ? (candidate.endpointAdapter==='grpc-endpoint/1'?'grpc-endpoint/1 + deployment-endpoint/1':candidate.endpointBinding ? 'endpoint-binding/1 + deployment-endpoint/1' : "deployment-endpoint/1") : undefined,
     );
     const resolved = {
       ...candidate,
@@ -286,6 +295,7 @@ export function resolveCandidates(
         protocol: new URL(target.url).protocol==='grpc:'?'gRPC':new URL(target.url).protocol.replace(":", "").toUpperCase(),
         ...(candidate.endpointAdapter?{endpointAdapter:candidate.endpointAdapter,transportSecurity:'unknown'}:{}),
         candidateId: candidate.id,
+        ...(candidate.endpointMeaning ? {endpointMeaning:candidate.endpointMeaning,sourceAdapter:candidate.sourceAdapter} : {}),
         resolutionId,
         ...(candidate.extraction?{extraction:candidate.extraction}:{}),
       });

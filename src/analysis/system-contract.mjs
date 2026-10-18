@@ -89,7 +89,7 @@ export const systemSchema = object({
         id,
         project: id,
         source: {oneOf:[object({
-          adapter: { const: "spring-explicit-bean/1" },
+          adapter: { enum: ["spring-explicit-bean/1", "spring-http-factory/1"] },
           files: { ...list(fileRef), minItems: 1 },
           clientTypes: { ...unique(text), minItems: 1 },
         }),object({

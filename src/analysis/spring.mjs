@@ -34,7 +34,7 @@ const knownImports = {
 
 // Grammar-backed extraction, followed by an intentionally narrow semantic whitelist.
 // Unknown method bodies remain candidates; parsing Java never proves bean reachability.
-export function extractSpring(files, source, env, ledger) {
+export function extractSpring(files, source, env, ledger, { httpFactories = false } = {}) {
   const candidates = [],
     diagnostics = [];
   for (const file of source.files) {
@@ -70,8 +70,8 @@ export function extractSpring(files, source, env, ledger) {
       classAnnotations.length === 1 &&
       classAnnotations[0] === "@ Configuration" &&
       imported("Configuration") &&
-      !descendants(tree, "superclass").length &&
-      !descendants(tree, "superinterfaces").length;
+      !descendants(tree, "classExtends").length &&
+      !descendants(tree, "classImplements").length;
     const methods = descendants(tree, "methodDeclaration");
     for (const method of methods) {
       const methodText = text(method);
@@ -143,10 +143,29 @@ export function extractSpring(files, source, env, ledger) {
         unsupported.push(
           "Only one literal @Value parameter and an approved client return type are supported",
         );
-      if (
-        text(method.children.methodBody?.[0]) !==
-        `{ return new ${result} ( ${param} ) ; }`
-      )
+      const body = text(method.children.methodBody?.[0]);
+      const httpImports = {
+        RestClient: 'org.springframework.web.client.RestClient',
+        WebClient: 'org.springframework.web.reactive.function.client.WebClient',
+      };
+      const supportedFactory = httpFactories
+        ? Object.hasOwn(httpImports, result) &&
+          imports.includes(`import ${httpImports[result].split('.').join(' . ')} ;`) &&
+          param !== result &&
+          !imports.some(i => i.startsWith('import static ')) &&
+          !descendants(tree, 'fieldDeclaration').length &&
+          !descendants(tree, 'typeParameters').length &&
+          !descendants(tree, 'classExtends').length &&
+          !descendants(tree, 'classImplements').length &&
+          !descendants(tree, 'interfaceDeclaration').length &&
+          !descendants(tree, 'enumDeclaration').length &&
+          !descendants(tree, 'recordDeclaration').length &&
+          [
+            `{ return ${result} . create ( ${param} ) ; }`,
+            `{ return ${result} . builder ( ) . baseUrl ( ${param} ) . build ( ) ; }`,
+          ].includes(body)
+        : body === `{ return new ${result} ( ${param} ) ; }`;
+      if (!supportedFactory)
         unsupported.push(
           "Client construction is dynamic or outside the approved constructor pattern",
         );
@@ -160,7 +179,7 @@ export function extractSpring(files, source, env, ledger) {
       const factId = ledger.fact(
         "client.candidate",
         id,
-        { name, key, conditions, unsupported },
+        { name, key, conditions, unsupported, ...(httpFactories ? {endpointMeaning:'configured-base-url', sourceAdapter:'spring-http-factory/1'} : {}) },
         [methodEvidence],
       );
       candidates.push({
@@ -173,6 +192,7 @@ export function extractSpring(files, source, env, ledger) {
         conditions,
         unsupported,
         factId,
+        ...(httpFactories ? {endpointMeaning:'configured-base-url', sourceAdapter:'spring-http-factory/1'} : {}),
       });
       if (unsupported.length)
         diagnostics.push({

@@ -1,5 +1,9 @@
 # System composition — archi/system-v1alpha1
 
+`spring-http-factory/1` adds opt-in bounded Java RestClient/WebClient base-URL
+extraction. See [HTTP client factories](http-client-factories.md) and the
+[prioritized common-feature plan](common-feature-plan.md).
+
 `spring-properties/10` adds bounded multi-document profile activation to repository
 and mounted input scopes. See [configuration documents](config-documents.md).
 

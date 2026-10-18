@@ -24,6 +24,7 @@ const result = (required, properties) => ({
   properties: { ...properties, diagnostics: records },
 });
 export const adapterResultSchemas = Object.freeze({
+  'spring-http-factory/1':result(['candidates','coverage'],{candidates:records,coverage}),
   'spring-properties/10':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
   'spring-properties/9':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
   'spring-properties/8':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
@@ -83,6 +84,7 @@ export function validateAdapterResult(id, result) {
 
 // Closed, versioned built-ins. A manifest selects an adapter, never executable code.
 export const adapterContracts = Object.freeze({
+  'spring-http-factory/1':Object.freeze({input:'pinned-java + explicit-spring-http-imports + literal-value-parameter',output:'configured-base-url-candidates + evidence + diagnostics',engine:'java-parser@3.0.1 + bounded-http-factory/1'}),
   'spring-properties/10':Object.freeze({input:'v8-or-v9-scope + ordered-documents-and-profile-activation',output:'effective-values + document-profile-import-evidence + diagnostics',engine:'profile-activated-documents/1 + mounted-configmap-files/3 + bound-profile-imports/1 + rendered-configmap-env/1 + closed-scope-placeholders/1'}),
   'spring-properties/9':Object.freeze({input:'v8-config-scope + explicit-mounted-profile-bindings',output:'effective-values + mount-profile-and-import-evidence + diagnostics',engine:'mounted-configmap-files/3 + bound-profile-imports/1 + rendered-configmap-env/1 + closed-scope-placeholders/1'}),
   'spring-properties/8':Object.freeze({input:'v5-config-scope + explicit-profile-bindings',output:'effective-values + profile-and-import-evidence + diagnostics',engine:'bound-profile-imports/1 + rendered-configmap-env/1 + closed-scope-placeholders/1'}),
@@ -119,12 +121,13 @@ export function runAdapter(id, context) {
     fileResolver:(files,env,ledger)=>resolveConfigImports(files,env,ledger,{profiles:true,documents:id==='spring-properties/10'}),
     ...(id==='spring-properties/9'||id==='spring-properties/10'&&context.env.mountedFiles!==undefined?{mountResolver:(...args)=>resolveMountedConfig(...args,{imports:true,profiles:true,documents:id==='spring-properties/10'})}:{}),
   });
-  else if (id === "spring-explicit-bean/1")
+  else if (id === "spring-explicit-bean/1" || id === 'spring-http-factory/1')
     result = extractSpring(
       context.files,
       context.source,
       context.env,
       context.ledger,
+      {httpFactories:id === 'spring-http-factory/1'},
     );
   else if (['ai-evidence/1','ai-evidence/2','ai-evidence/3'].includes(id)) result=extractAiCandidates(context);
   else if (['spring-properties/2','spring-properties/3','spring-properties/4','spring-properties/5','spring-properties/6','spring-properties/7'].includes(id)) result=resolveProperties(context.files,context.env,context.resources,context.source,context.ledger,{
