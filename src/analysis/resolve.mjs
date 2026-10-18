@@ -113,6 +113,7 @@ export function resolveCandidates(
   for (const candidate of extracted.candidates) {
     const facts = [
       candidate.factId,
+      ...(candidate.registrationFact?[candidate.registrationFact]:[]),
       properties.scopeFact,
       ...(properties.referenceFactIds??[]),
       ...(targetFact ? [targetFact] : []),
@@ -121,9 +122,16 @@ export function resolveCandidates(
     const reasons = [...candidate.unsupported];
     if (candidate.endpointMeaning === 'configured-base-url')
       reasons.push('Configured HTTP client base URL only; request URI overrides, later mutation, redirects, proxies and actual calls are not analyzed');
+    if(candidate.sourceAdapter==='spring-feign/1')
+      reasons.push('Explicit Feign registration is conditional on reviewed configuration activation and default client behavior; client names are not resolved as service discovery');
     let eligibility = "enabled";
     if (candidate.unsupported.length || !properties.complete)
       eligibility = "unknown";
+    if(candidate.sourceAdapter==='spring-feign/1'&&Object.keys(properties.values).some(k=>/^(spring\.cloud\.openfeign\.|feign\.)/.test(k))){
+      eligibility='unknown';
+      facts.push(...Object.keys(properties.values).filter(k=>/^(spring\.cloud\.openfeign\.|feign\.)/.test(k)).flatMap(k=>properties.chains[k]??[]));
+      reasons.push('Feign framework property overrides require a separate supported configuration contract');
+    }
     const sameName = extracted.candidates.filter(
       (c) => c.name === candidate.name,
     );
@@ -158,7 +166,7 @@ export function resolveCandidates(
       }
     if (eligibility === "enabled")
       reasons.push(
-        candidate.extraction ? 'Operator accepted the AI extraction; supported conditions are satisfied. This is a declared review, not parser verification or execution proof.' : "Explicit bean registration and supported conditions are satisfied; execution is not proven",
+        candidate.extraction ? 'Operator accepted the AI extraction; supported conditions are satisfied. This is a declared review, not parser verification or execution proof.' : candidate.sourceAdapter==='spring-feign/1' ? 'Explicit Feign interface registration matches the selected source scope; configuration activation is reviewed, not runtime-proven' : "Explicit bean registration and supported conditions are satisfied; execution is not proven",
       );
     const value = candidate.endpointBinding ? Object.fromEntries(endpointKeys(candidate.endpointBinding).map(k=>[k,properties.values[k]??null])) : properties.values[candidate.key] ?? null;
     let url = properties.complete ? (candidate.endpointAdapter==='grpc-endpoint/1' ? resolveGrpcEndpoint(candidate.endpointBinding,properties.values) : candidate.endpointBinding ? resolveEndpointBinding(candidate.endpointBinding,candidate.extraction.protocol,properties.values) : endpoint(value)) : null;
@@ -258,14 +266,14 @@ export function resolveCandidates(
       consistency,
     };
     const resolutionId = ledger.resolve(
-      targetResolver
+      candidate.sourceAdapter==='spring-feign/1' ? (targetResolver?'explicit-feign-to-deployment':'explicit-feign-to-endpoint') : targetResolver
         ? (candidate.extraction ? 'reviewed-ai-candidate-to-deployment' : "explicit-bean-to-deployment")
         : "explicit-bean-to-endpoint",
       [...new Set(facts)],
       outcome,
       reasons,
-      candidate.sourceAdapter === 'spring-http-factory/1'
-        ? 'spring-http-factory/1' + (targetResolver ? ' + deployment-endpoint/1' : '')
+      ['spring-http-factory/1','spring-feign/1'].includes(candidate.sourceAdapter)
+        ? candidate.sourceAdapter + (targetResolver ? ' + deployment-endpoint/1' : '')
         : targetResolver ? (candidate.endpointAdapter==='grpc-endpoint/1'?'grpc-endpoint/1 + deployment-endpoint/1':candidate.endpointBinding ? 'endpoint-binding/1 + deployment-endpoint/1' : "deployment-endpoint/1") : undefined,
     );
     const resolved = {

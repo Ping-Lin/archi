@@ -93,6 +93,10 @@ export const systemSchema = object({
           files: { ...list(fileRef), minItems: 1 },
           clientTypes: { ...unique(text), minItems: 1 },
         }),object({
+          adapter:{const:'spring-feign/1'},
+          files:{...list(fileRef),minItems:1,maxItems:64},
+          registrationPolicy:{const:'explicit-registration-and-defaults-reviewed'},
+        }),object({
         adapter:{enum:['ai-evidence/1','ai-evidence/2','ai-evidence/3']},
         files:{...list(fileRef),minItems:1},
         candidateFile:fileRef,

@@ -23,7 +23,7 @@ reviewable slices, not a promise of complete framework support in one change.
 
 ## First slice: Java HTTP factories
 
-Status: implemented; focused local tests passed, full CI acceptance pending.
+Status: implemented in `41e11cc`; all three CI jobs passed (run `39114098263`).
 
 Add opt-in `spring-http-factory/1` for explicitly imported Spring RestClient and
 WebClient, with a single literal `@Value("${key}") String` parameter:
@@ -45,3 +45,17 @@ Regression correction: the previous constructor adapter checked obsolete CST nod
 names for inheritance. Both adapters now enforce the already-documented no-inheritance
 boundary using `classExtends`/`classImplements`. Previously accepted inherited
 configuration classes now correctly remain unknown.
+
+## Second slice: explicit Feign clients
+
+Status: implemented with focused parser/resolver and Helm-gated integration tests.
+CI acceptance is tracked by the feature branch's commit checks.
+
+`spring-feign/1` joins explicit EnableFeignClients class literals to fully qualified
+Feign interfaces and resolves exact annotation URL property references. Both source
+inputs and the reviewed activation/defaults policy enter evidence. Name-only discovery,
+scanning, custom configuration, duplicate registrations and framework overrides stay
+unknown. See [supported scope and tests](feign-clients.md).
+
+Next bounded design: ConfigurationProperties consumption. Kotlin/gRPC extraction
+remains in the P1 backlog; no general Java/Kotlin dataflow completeness is claimed.
