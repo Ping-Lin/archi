@@ -57,10 +57,13 @@ npm run verify
 npm run test:spring-boot
 ```
 
-The Boot 3.5.6 gate has 54 scenarios: 50 matching value cases and four deliberately
-incomplete cases. The new cases include YAML/properties order, active/inactive
+The document extension brought the Boot 3.5.6 gate to 54 scenarios: 50 matching
+value cases and four deliberately incomplete cases. The document cases include YAML/properties order, active/inactive
 imports, imported activation, profile variants, default profiles, mounted documents
 and environment precedence. This is bounded synthetic parity, not full Spring
 compatibility or real-project acceptance.
+
+The later [record-binding extension](record-client-binding.md) brings the complete
+gate to 60 scenarios without changing document semantics.
 
 Reference: [Spring Boot multi-document configuration](https://docs.spring.io/spring-boot/3.5/reference/features/external-config.html#features.external-config.files.multi-document).

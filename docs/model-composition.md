@@ -1,5 +1,8 @@
 # System composition — archi/system-v1alpha1
 
+`spring-record-client/1` connects explicitly registered String properties records
+to HTTP client base URLs. See [record consumption](record-client-binding.md).
+
 `spring-feign/1` adds explicit Feign interface registration and configured URL
 evidence under a reviewed-defaults policy. See [Feign clients](feign-clients.md).
 

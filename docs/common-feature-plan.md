@@ -48,8 +48,7 @@ configuration classes now correctly remain unknown.
 
 ## Second slice: explicit Feign clients
 
-Status: implemented with focused parser/resolver and Helm-gated integration tests.
-CI acceptance is tracked by the feature branch's commit checks.
+Status: implemented in `f5f2d10`; all three CI jobs passed (run `39114610980`).
 
 `spring-feign/1` joins explicit EnableFeignClients class literals to fully qualified
 Feign interfaces and resolves exact annotation URL property references. Both source
@@ -57,5 +56,15 @@ inputs and the reviewed activation/defaults policy enter evidence. Name-only dis
 scanning, custom configuration, duplicate registrations and framework overrides stay
 unknown. See [supported scope and tests](feign-clients.md).
 
-Next bounded design: ConfigurationProperties consumption. Kotlin/gRPC extraction
-remains in the P1 backlog; no general Java/Kotlin dataflow completeness is claimed.
+## Third slice: ConfigurationProperties record consumption
+
+Status: implemented with parser/resolver tests and six additional real-Boot cases;
+CI acceptance is tracked by the feature branch's commit checks.
+
+`spring-record-client/1` joins explicit record registration, canonical String member
+keys and direct HTTP factory accessors. Custom bodies, mutable/nested types, missing
+registration and relaxed aliases remain unsupported. See [record binding](record-client-binding.md).
+
+Next: extend bounded binding to common mutable bean forms and assess relaxed-name
+precedence with independent Boot expectations. Kotlin/gRPC extraction remains in
+the P1 backlog; no general Java/Kotlin dataflow completeness is claimed.

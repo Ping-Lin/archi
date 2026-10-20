@@ -7,10 +7,17 @@ import assert from 'node:assert/strict';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {runAdapter} from '../src/analysis/adapters.mjs';
 import {createLedger} from '../src/analysis/contract.mjs';
+import {resolveCandidates,readObservations} from '../src/analysis/resolve.mjs';
 
 // Handwritten expected values are independent of both evaluators.
 const base='peer.host=orders\npeer.port=7000\n';
 const cases=[
+  {id:'record-canonical',files:[['application.properties',base+'archi.probe.record=true\npeer.base-url=https://orders.example.invalid']],expected:['orders','7000'],recordExpected:'https://orders.example.invalid'},
+  {id:'record-yaml',files:[['application.yaml','archi.probe.record: true\npeer:\n  host: orders\n  port: 7000\n  base-url: https://orders.example.invalid']],expected:['orders','7000'],recordExpected:'https://orders.example.invalid'},
+  {id:'record-env-override',files:[['application.properties',base+'archi.probe.record=true\npeer.base-url=https://old.example.invalid']],env:{PEER_BASEURL:'https://orders.example.invalid'},expected:['orders','7000'],recordExpected:'https://orders.example.invalid'},
+  {id:'record-json-override',files:[['application.properties',base+'archi.probe.record=true\npeer.base-url=https://old.example.invalid']],env:{SPRING_APPLICATION_JSON:'{"peer.base-url":"https://orders.example.invalid"}'},expected:['orders','7000'],recordExpected:'https://orders.example.invalid'},
+  {id:'record-relaxed-alias-blocked',files:[['application.properties',base+'archi.probe.record=true\npeer.baseUrl=https://orders.example.invalid']],expected:['orders','7000'],recordExpected:'https://orders.example.invalid',recordBlocked:true},
+  {id:'record-missing-blocked',files:[['application.properties',base+'archi.probe.record=true']],expected:['orders','7000'],recordExpected:null,recordBlocked:true},
   {id:'documents-properties-order',documents:true,profiles:['qa'],profileBases:['application.properties'],files:[['application.properties',base+'#---\npeer.port=8100\n!---\npeer.port=8200']],expected:['orders','8200']},
   {id:'documents-profile-active',documents:true,profiles:['qa'],profileBases:['application.properties'],files:[['application.properties',base+'#---\nspring.config.activate.on-profile=qa & !prod\npeer.port=8100\n!---\nspring.config.activate.on-profile=prod\npeer.port=9999']],expected:['orders','8100']},
   {id:'documents-yaml-expression',documents:true,profiles:['qa'],profileBases:['application.yaml'],files:[['application.yaml','peer.host: orders\npeer.port: 7000\n---\nspring.config.activate.on-profile: "(qa | staging) & !prod"\npeer.port: 8200']],expected:['orders','8200']},
@@ -95,9 +102,10 @@ try {
       const variant=from.replace(/(\.(?:properties|ya?ml))$/,`-${profile}$1`);
       return {from:path.join(cwd,from),profile,file:scenario.mounted.some(([name])=>name===variant)?path.join(cwd,variant):null};
     }));
+    const propertyLedger=createLedger('qa','probe');
     const properties=runAdapter(scenario.documents?'spring-properties/10':scenario.mountedProfileBases?'spring-properties/9':scenario.profileBases?'spring-properties/8':scenario.mountedImports?'spring-properties/7':scenario.mounted?'spring-properties/6':scenario.imports?'spring-properties/5':'spring-properties/4',{
-      files:new Map([...scenario.files,...(scenario.extra??[])]),env:{id:'qa',cluster:'fixture',namespace:'probe',profiles:scenario.profiles??['qa'],propertiesComplete:true,propertyFiles:scenario.files.map(([name])=>name),environmentBindings:scenario.env?.PEER_PORT?[{name:'PEER_PORT',key:'peer.port'}]:[],...(scenario.imports||scenario.mounted||scenario.profileBases?{importProfilePolicy:scenario.profileBases?'explicit-variants-reviewed':'no-variants-reviewed',importBindings:(scenario.imports??[]).map(([from,location,file])=>({from,location,file}))}:{}),...(profileBindings?{profileBindings}:{}),...(mountedFiles?{mountedFiles}:{}),...(mountedProfileBindings?{mountedProfileBindings}:{}),...(scenario.mountedImports?{mountedImportBindings:scenario.mountedImports.map(([from,location,file])=>({from:path.join(cwd,from),location,file:path.join(cwd,file)}))}:{})},
-      source:{service:'probe'},ledger:createLedger('qa','probe'),resources:[{kind:'Deployment',key:'probe',service:'probe',spec:{template:{spec:{...(mountedFiles?{volumes:[{name:'config',configMap:{name:'settings'}}]}:{}),containers:[{env:Object.entries(variables).map(([name,value])=>({name,value})),...(mountedFiles?{volumeMounts:[{name:'config',mountPath:cwd}]}:{})}]}}}},...(mountedFiles?[{kind:'ConfigMap',key:'fixture||configmaps|probe|settings',data:Object.fromEntries(scenario.mounted)}]:[])],
+      files:new Map([...scenario.files,...(scenario.extra??[])]),env:{id:'qa',cluster:'fixture',namespace:'probe',profiles:scenario.profiles??['qa'],propertiesComplete:true,propertyFiles:scenario.files.map(([name])=>name),environmentBindings:[...(scenario.env?.PEER_PORT?[{name:'PEER_PORT',key:'peer.port'}]:[]),...(scenario.env?.PEER_BASEURL?[{name:'PEER_BASEURL',key:'peer.base-url'}]:[])],...(scenario.imports||scenario.mounted||scenario.profileBases?{importProfilePolicy:scenario.profileBases?'explicit-variants-reviewed':'no-variants-reviewed',importBindings:(scenario.imports??[]).map(([from,location,file])=>({from,location,file}))}:{}),...(profileBindings?{profileBindings}:{}),...(mountedFiles?{mountedFiles}:{}),...(mountedProfileBindings?{mountedProfileBindings}:{}),...(scenario.mountedImports?{mountedImportBindings:scenario.mountedImports.map(([from,location,file])=>({from:path.join(cwd,from),location,file:path.join(cwd,file)}))}:{})},
+      source:{service:'probe'},ledger:propertyLedger,resources:[{kind:'Deployment',key:'probe',service:'probe',spec:{template:{spec:{...(mountedFiles?{volumes:[{name:'config',configMap:{name:'settings'}}]}:{}),containers:[{env:Object.entries(variables).map(([name,value])=>({name,value})),...(mountedFiles?{volumeMounts:[{name:'config',mountPath:cwd}]}:{})}]}}}},...(mountedFiles?[{kind:'ConfigMap',key:'fixture||configmaps|probe|settings',data:Object.fromEntries(scenario.mounted)}]:[])],
     });
     if(scenario.bootFailure){
       assert.notEqual(run.status,0,scenario.id+' must fail in Spring');
@@ -110,7 +118,17 @@ try {
     }
     assert.equal(properties.complete,!scenario.unsupported,scenario.id+' Archi completeness');
     if(!scenario.unsupported)assert.deepEqual([properties.values['peer.host'],properties.values['peer.port']],scenario.expected,scenario.id+' Archi values');
-    results.push({id:scenario.id,status:scenario.unsupported?'unsupported-correctly-blocked':'matched',springBoot:scenario.bootFailure?'startup-failed':observed.version,expected:scenario.expected??null,diagnostics:properties.diagnostics.map(d=>d.code)});
+    if(Object.hasOwn(scenario,'recordExpected')){
+      assert.equal(observed['binding.base-url'],scenario.recordExpected??'<null>',scenario.id+' Boot record accessor');
+      const sourceFiles=new Map(await Promise.all(['Peer.java','Clients.java'].map(async name=>[name,await readFile(path.join(repo,'examples/record-client',name),'utf8')])));
+      const env={id:'qa',profiles:['qa'],targets:[{id:'orders',kind:'external',url:'https://orders.example.invalid'}]};
+      const extracted=runAdapter('spring-record-client/1',{files:sourceFiles,source:{service:'probe',files:[...sourceFiles.keys()]},env,ledger:propertyLedger,service:{source:{bindingPolicy:'explicit-record-binding-reviewed'}}});
+      assert.equal(extracted.candidates[0].key,'peer.base-url');
+      const resolved=resolveCandidates(extracted,properties,env,[],readObservations(null,env,propertyLedger),propertyLedger);
+      assert.equal(resolved.dependencies.length,scenario.recordBlocked?0:1,scenario.id+' record dependency');
+      if(!scenario.recordBlocked)assert.equal(resolved.candidates[0].value,scenario.recordExpected);
+    }
+    results.push({id:scenario.id,status:scenario.unsupported||scenario.recordBlocked?'unsupported-correctly-blocked':'matched',springBoot:scenario.bootFailure?'startup-failed':observed.version,expected:scenario.expected??null,diagnostics:properties.diagnostics.map(d=>d.code)});
     console.log(scenario.id+': '+results.at(-1).status);
   }
   const out=path.join(repo,'artifacts/spring-boot-compat');await mkdir(out,{recursive:true});

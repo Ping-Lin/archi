@@ -104,3 +104,12 @@ this override and always rebuilds the probe from source. Reuse is not a build ga
 `spring-properties/10` adds 12 document-order/activation scenarios, bringing the gate
 to 54 cases (50 matches and four deliberately incomplete). See
 [document activation](config-documents.md). Existing /4–/9 cases remain in the gate.
+
+## Record client consumption extension
+
+Six additional cases bring the gate to 60 scenarios: 54 matches and six deliberately
+blocked cases. The probe binds a String `baseUrl` record component; the new source
+adapter derives `peer.base-url` from the selected record/factory specimens. Canonical
+properties, YAML, env and JSON overrides match. Alias-only binding and missing URL
+produce no Archi edge, while the Boot accessor result is independently checked.
+See [record client binding](record-client-binding.md). HTTP factories are not executed.
