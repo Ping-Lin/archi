@@ -93,6 +93,10 @@ export const systemSchema = object({
           files: { ...list(fileRef), minItems: 1 },
           clientTypes: { ...unique(text), minItems: 1 },
         }),object({
+          adapter:{const:'spring-bean-client/1'},
+          files:{...list(fileRef),minItems:1,maxItems:64},
+          bindingPolicy:{const:'explicit-bean-binding-reviewed'},
+        }),object({
           adapter:{const:'spring-record-client/1'},
           files:{...list(fileRef),minItems:1,maxItems:64},
           bindingPolicy:{const:'explicit-record-binding-reviewed'},

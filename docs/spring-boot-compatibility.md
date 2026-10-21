@@ -113,3 +113,12 @@ adapter derives `peer.base-url` from the selected record/factory specimens. Cano
 properties, YAML, env and JSON overrides match. Alias-only binding and missing URL
 produce no Archi edge, while the Boot accessor result is independently checked.
 See [record client binding](record-client-binding.md). HTTP factories are not executed.
+
+## Mutable bean client consumption extension
+
+Six additional JavaBean cases bring the gate to 66 scenarios: 58 matches and eight
+intentionally blocked cases. Canonical properties, YAML, environment and JSON
+overrides are compared to the actual Boot getter. Alias-only and missing values
+remain blocked in Archi. The probe uses a separate mutable bean with the same
+prefix; its getter output is checked independently of the record accessor.
+See [bean binding](bean-client-binding.md). HTTP factories are not executed.

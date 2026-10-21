@@ -127,8 +127,8 @@ export function resolveCandidates(
     let eligibility = "enabled";
     if (candidate.unsupported.length || !properties.complete)
       eligibility = "unknown";
-    if(candidate.sourceAdapter==='spring-record-client/1'){
-      reasons.push('Record binding and configuration activation are reviewed assumptions; only exact canonical String properties are supported');
+    if(['spring-record-client/1','spring-bean-client/1'].includes(candidate.sourceAdapter)){
+      reasons.push((candidate.sourceAdapter==='spring-bean-client/1'?'JavaBean':'Record')+' binding and configuration activation are reviewed assumptions; only exact canonical String properties are supported');
       const normalized=k=>k.toLowerCase().replace(/[^a-z0-9]/g,'');
       const aliases=Object.keys(properties.values).filter(k=>(candidate.bindingKeys??[]).some(expected=>k!==expected&&normalized(k)===normalized(expected)));
       if(aliases.length){
@@ -282,7 +282,7 @@ export function resolveCandidates(
       [...new Set(facts)],
       outcome,
       reasons,
-      ['spring-http-factory/1','spring-feign/1','spring-record-client/1'].includes(candidate.sourceAdapter)
+      ['spring-http-factory/1','spring-feign/1','spring-record-client/1','spring-bean-client/1'].includes(candidate.sourceAdapter)
         ? candidate.sourceAdapter + (targetResolver ? ' + deployment-endpoint/1' : '')
         : targetResolver ? (candidate.endpointAdapter==='grpc-endpoint/1'?'grpc-endpoint/1 + deployment-endpoint/1':candidate.endpointBinding ? 'endpoint-binding/1 + deployment-endpoint/1' : "deployment-endpoint/1") : undefined,
     );

@@ -1,8 +1,6 @@
 import {parse} from 'java-parser';
 import {hash,identify} from './contract.mjs';
 
-const adapter='spring-record-client/1';
-const policy='explicit-record-binding-reviewed';
 const known={Configuration:'org.springframework.context.annotation.Configuration',Bean:'org.springframework.context.annotation.Bean',EnableConfigurationProperties:'org.springframework.boot.context.properties.EnableConfigurationProperties',ConfigurationProperties:'org.springframework.boot.context.properties.ConfigurationProperties',RestClient:'org.springframework.web.client.RestClient',WebClient:'org.springframework.web.reactive.function.client.WebClient'};
 function nodes(node,name){
   return [...(node?.name===name?[node]:[]),...Object.values(node?.children??{}).flatMap(a=>a.filter(n=>n.children).flatMap(n=>nodes(n,name)))];
@@ -16,9 +14,11 @@ const text=node=>tokens(node).map(t=>t.image).join(' ');
 const annotations=(node,modifier)=>(node?.children[modifier]??[]).flatMap(m=>nodes(m,'annotation')).map(text);
 const canonical=member=>member.replace(/[A-Z]/g,c=>'-'+c.toLowerCase());
 
-export function extractRecordClients({files,source,env,ledger,service}){
+export function extractRecordClients({files,source,env,ledger,service},{beans=false}={}){
+  const adapter=beans?'spring-bean-client/1':'spring-record-client/1';
+  const policy=beans?'explicit-bean-binding-reviewed':'explicit-record-binding-reviewed';
   const records=[],registrations=[],factories=[],diagnostics=[];
-  const fail=(file,message)=>diagnostics.push({code:'UNSUPPORTED_RECORD_BINDING',file,message});
+  const fail=(file,message)=>diagnostics.push({code:beans?'UNSUPPORTED_BEAN_BINDING':'UNSUPPORTED_RECORD_BINDING',file,message:beans?message.replace(/record/gi,'JavaBean'):message});
   const scope=ledger.recordEvidence({type:'declared_analysis_scope',locator:'source.bindingPolicy',adapter,policy:service?.source.bindingPolicy??null});
   if(service?.source.bindingPolicy!==policy)fail('source','Explicit record binding review is required');
   if(source.files.length>64)throw Error('Record source scope exceeds 64 files');
@@ -46,6 +46,7 @@ export function extractRecordClients({files,source,env,ledger,service}){
     const anns=annotations(declarations[0],'classModifier');
     const record=nodes(tree,'recordDeclaration')[0];
     if(record){
+      if(beans){fail(file,'Constructor-bound declarations are outside mutable bean scope');continue;}
       const prefix=anns.length===1?anns[0].match(/^@ ConfigurationProperties \( (?:(?:prefix|value) = )?"([a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*)" \)$/)?.[1]:null;
       const components=nodes(record,'recordComponent').map(text);
       const members=components.map(c=>c.match(/^String ([a-z][a-z0-9]*(?:[A-Z][a-z0-9]+)*)$/)?.[1]);
@@ -58,6 +59,28 @@ export function extractRecordClients({files,source,env,ledger,service}){
     }
     const normal=nodes(tree,'normalClassDeclaration')[0];
     if(!normal){fail(file,'No supported configuration class or properties record');continue;}
+    if(beans&&anns.some(a=>a.startsWith('@ ConfigurationProperties'))){
+      const prefix=anns.length===1?anns[0].match(/^@ ConfigurationProperties \( (?:(?:prefix|value) = )?"([a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*)" \)$/)?.[1]:null;
+      const fields=nodes(normal,'fieldDeclaration'),methods=nodes(normal,'methodDeclaration');
+      const members=fields.map(f=>text(f).match(/^private String ([a-z][a-z0-9]*(?:[A-Z][a-z0-9]+)*) ;$/)?.[1]);
+      const expected=members.filter(Boolean).flatMap(m=>{
+        const suffix=m[0].toUpperCase()+m.slice(1);
+        return [[`public String get${suffix} ( ) { return ${m} ; }`,`public String get${suffix} ( ) { return this . ${m} ; }`],
+          [`public void set${suffix} ( String ${m} ) { this . ${m} = ${m} ; }`]];
+      });
+      const methodTexts=methods.map(text);
+      const bodyParts=[...fields,...methods].sort((a,b)=>a.location.startOffset-b.location.startOffset);
+      const modifiers=(declarations[0]?.children.classModifier??[]).filter(m=>!nodes(m,'annotation').length).map(text);
+      const valid=clean&&imported('ConfigurationProperties')&&prefix&&modifiers.join(' ')==='public'&&
+        members.length>0&&members.length<=16&&members.every(m=>m&&!/^[a-z][A-Z]/.test(m))&&new Set(members).size===members.length&&
+        !imports.some(i=>i.endsWith(' . String ;')&&i!=='import java . lang . String ;')&&
+        text(normal.children.classBody?.[0])===`{ ${bodyParts.map(text).join(' ')} }`&&
+        methodTexts.length===expected.length&&expected.every(forms=>methodTexts.filter(m=>forms.includes(m)).length===1);
+      if(!valid){fail(file,'Bean requires 1–16 plain private String fields, trivial public getter/setter pairs and an implicit empty constructor');continue;}
+      const name=text(normal.children.typeIdentifier?.[0]);
+      records.push({name:packageName?packageName+'.'+name:name,prefix,members,file,evidence});
+      continue;
+    }
     const enable=anns.filter(a=>a.startsWith('@ EnableConfigurationProperties'));
     const config=anns.filter(a=>a==='@ Configuration'||a==='@ Configuration ( proxyBeanMethods = false )');
     if(!clean||!imported('Configuration')||config.length!==1||anns.length!==config.length+enable.length||enable.length>1)fail(file,'Only Configuration and optional explicit EnableConfigurationProperties are supported');
@@ -81,7 +104,7 @@ export function extractRecordClients({files,source,env,ledger,service}){
       const valid=annotations(method,'methodModifier').join(' ')==='@ Bean'&&imported('Bean')&&['RestClient','WebClient'].includes(result)&&imported(result)&&param&&param[2]!==result&&member&&
         [`{ return ${result} . create ( ${access} ) ; }`,`{ return ${result} . builder ( ) . baseUrl ( ${access} ) . build ( ) ; }`].includes(body);
       if(!valid)fail(file,'Factory requires one record parameter and a direct String accessor in a supported HTTP factory');
-      factories.push({file,name,line:method.location.startLine,evidence,type:param?qualify(param[1].replaceAll(' ','')):null,member:member??null});
+      factories.push({file,name,line:method.location.startLine,evidence,type:param?qualify(param[1].replaceAll(' ','')):null,member:beans&&member?.match(/^get[A-Z]/)?member[3].toLowerCase()+member.slice(4):beans?null:member??null});
     }
   }
   for(const r of records)if(records.filter(x=>x.name===r.name).length!==1||registrations.filter(x=>x.name===r.name).length!==1)fail(r.file,'Record type must have exactly one declaration and registration');
@@ -92,12 +115,12 @@ export function extractRecordClients({files,source,env,ledger,service}){
     const record=records.find(r=>r.name===f.type),matches=registrations.filter(r=>r.name===f.type);
     const key=record&&f.member?record.prefix+'.'+canonical(f.member):null;
     const bindingKeys=record?.members.map(m=>record.prefix+'.'+canonical(m))??[];
-    const unsupported=invalid?['Selected record source scope is incomplete or unsupported']:[];
+    const unsupported=invalid?[beans?'Selected JavaBean source scope is incomplete or unsupported':'Selected record source scope is incomplete or unsupported']:[];
     const id=identify('candidate',{environment:env.id,source:source.service,adapter,file:f.file,name:f.name,line:f.line});
     const evidenceIds=[...new Set([scope,f.evidence,...(record?[record.evidence]:[]),...matches.map(r=>r.evidence)])];
     const registrationFact=ledger.fact('configuration.binding',id,{adapter,type:f.type,member:f.member,key,bindingKeys,registrations:matches.map(r=>r.file),policy},evidenceIds);
     const factId=ledger.fact('client.candidate',id,{name:f.name,key,registrationFact,endpointMeaning:'configured-base-url',sourceAdapter:adapter,unsupported},evidenceIds);
     return {id,name:f.name,source:source.service,file:f.file,line:f.line,key,bindingKeys,conditions:[],unsupported,factId,registrationFact,endpointMeaning:'configured-base-url',sourceAdapter:adapter};
   });
-  return {candidates,diagnostics,coverage:{collector:'spring-record-client',status:invalid?'partial':'complete',meaning:'Explicit String record accessor to configured HTTP base URL; reviewed activation/conversion scope; no general binding or request analysis'}};
+  return {candidates,diagnostics,coverage:{collector:beans?'spring-bean-client':'spring-record-client',status:invalid?'partial':'complete',meaning:beans?'Explicit trivial String JavaBean getter to configured HTTP base URL; reviewed activation/conversion scope; no general binding or request analysis':'Explicit String record accessor to configured HTTP base URL; reviewed activation/conversion scope; no general binding or request analysis'}};
 }

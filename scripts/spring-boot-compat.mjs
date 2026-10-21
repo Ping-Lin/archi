@@ -12,6 +12,12 @@ import {resolveCandidates,readObservations} from '../src/analysis/resolve.mjs';
 // Handwritten expected values are independent of both evaluators.
 const base='peer.host=orders\npeer.port=7000\n';
 const cases=[
+  {id:'bean-canonical',files:[['application.properties',base+'archi.probe.bean=true\npeer.base-url=https://orders.example.invalid']],expected:['orders','7000'],beanExpected:'https://orders.example.invalid'},
+  {id:'bean-yaml',files:[['application.yaml','archi.probe.bean: true\npeer:\n  host: orders\n  port: 7000\n  base-url: https://orders.example.invalid']],expected:['orders','7000'],beanExpected:'https://orders.example.invalid'},
+  {id:'bean-env-override',files:[['application.properties',base+'archi.probe.bean=true\npeer.base-url=https://old.example.invalid']],env:{PEER_BASEURL:'https://orders.example.invalid'},expected:['orders','7000'],beanExpected:'https://orders.example.invalid'},
+  {id:'bean-json-override',files:[['application.properties',base+'archi.probe.bean=true\npeer.base-url=https://old.example.invalid']],env:{SPRING_APPLICATION_JSON:'{"peer.base-url":"https://orders.example.invalid"}'},expected:['orders','7000'],beanExpected:'https://orders.example.invalid'},
+  {id:'bean-relaxed-alias-blocked',files:[['application.properties',base+'archi.probe.bean=true\npeer.baseUrl=https://orders.example.invalid']],expected:['orders','7000'],beanExpected:'https://orders.example.invalid',beanBlocked:true},
+  {id:'bean-missing-blocked',files:[['application.properties',base+'archi.probe.bean=true']],expected:['orders','7000'],beanExpected:null,beanBlocked:true},
   {id:'record-canonical',files:[['application.properties',base+'archi.probe.record=true\npeer.base-url=https://orders.example.invalid']],expected:['orders','7000'],recordExpected:'https://orders.example.invalid'},
   {id:'record-yaml',files:[['application.yaml','archi.probe.record: true\npeer:\n  host: orders\n  port: 7000\n  base-url: https://orders.example.invalid']],expected:['orders','7000'],recordExpected:'https://orders.example.invalid'},
   {id:'record-env-override',files:[['application.properties',base+'archi.probe.record=true\npeer.base-url=https://old.example.invalid']],env:{PEER_BASEURL:'https://orders.example.invalid'},expected:['orders','7000'],recordExpected:'https://orders.example.invalid'},
@@ -128,7 +134,17 @@ try {
       assert.equal(resolved.dependencies.length,scenario.recordBlocked?0:1,scenario.id+' record dependency');
       if(!scenario.recordBlocked)assert.equal(resolved.candidates[0].value,scenario.recordExpected);
     }
-    results.push({id:scenario.id,status:scenario.unsupported||scenario.recordBlocked?'unsupported-correctly-blocked':'matched',springBoot:scenario.bootFailure?'startup-failed':observed.version,expected:scenario.expected??null,diagnostics:properties.diagnostics.map(d=>d.code)});
+    if(Object.hasOwn(scenario,'beanExpected')){
+      assert.equal(observed['binding.bean-base-url'],scenario.beanExpected??'<null>',scenario.id+' Boot bean getter');
+      const sourceFiles=new Map(await Promise.all(['Peer.java','Clients.java'].map(async name=>[name,await readFile(path.join(repo,'examples/bean-client',name),'utf8')])));
+      const env={id:'qa',profiles:['qa'],targets:[{id:'orders',kind:'external',url:'https://orders.example.invalid'}]};
+      const extracted=runAdapter('spring-bean-client/1',{files:sourceFiles,source:{service:'probe',files:[...sourceFiles.keys()]},env,ledger:propertyLedger,service:{source:{bindingPolicy:'explicit-bean-binding-reviewed'}}});
+      assert.equal(extracted.candidates[0].key,'peer.base-url');
+      const resolved=resolveCandidates(extracted,properties,env,[],readObservations(null,env,propertyLedger),propertyLedger);
+      assert.equal(resolved.dependencies.length,scenario.beanBlocked?0:1,scenario.id+' bean dependency');
+      if(!scenario.beanBlocked)assert.equal(resolved.candidates[0].value,scenario.beanExpected);
+    }
+    results.push({id:scenario.id,status:scenario.unsupported||scenario.recordBlocked||scenario.beanBlocked?'unsupported-correctly-blocked':'matched',springBoot:scenario.bootFailure?'startup-failed':observed.version,expected:scenario.expected??null,diagnostics:properties.diagnostics.map(d=>d.code)});
     console.log(scenario.id+': '+results.at(-1).status);
   }
   const out=path.join(repo,'artifacts/spring-boot-compat');await mkdir(out,{recursive:true});

@@ -58,13 +58,19 @@ unknown. See [supported scope and tests](feign-clients.md).
 
 ## Third slice: ConfigurationProperties record consumption
 
-Status: implemented with parser/resolver tests and six additional real-Boot cases;
-CI acceptance is tracked by the feature branch's commit checks.
+Status: implemented in `71991a3`; all three CI jobs passed (run `39429535162`).
 
 `spring-record-client/1` joins explicit record registration, canonical String member
 keys and direct HTTP factory accessors. Custom bodies, mutable/nested types, missing
 registration and relaxed aliases remain unsupported. See [record binding](record-client-binding.md).
 
-Next: extend bounded binding to common mutable bean forms and assess relaxed-name
-precedence with independent Boot expectations. Kotlin/gRPC extraction remains in
+## Fourth slice: mutable ConfigurationProperties beans
+
+`spring-bean-client/1` supports explicitly registered, public mutable beans with
+plain private String fields and trivial getter/setter pairs. Direct getters feed
+HTTP factory base URLs; custom logic and noncanonical keys remain unresolved.
+See [bean binding](bean-client-binding.md). Parser/resolver tests, pinned Helm
+composition and six independent Boot expectations form the acceptance gate.
+
+Next: assess bounded relaxed-name precedence with independent Boot expectations. Kotlin/gRPC extraction remains in
 the P1 backlog; no general Java/Kotlin dataflow completeness is claimed.

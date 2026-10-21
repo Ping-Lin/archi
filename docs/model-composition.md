@@ -1,5 +1,8 @@
 # System composition — archi/system-v1alpha1
 
+`spring-bean-client/1` supports explicit mutable String properties beans. See
+[bean consumption](bean-client-binding.md).
+
 `spring-record-client/1` connects explicitly registered String properties records
 to HTTP client base URLs. See [record consumption](record-client-binding.md).
 
