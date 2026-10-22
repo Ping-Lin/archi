@@ -122,3 +122,12 @@ overrides are compared to the actual Boot getter. Alias-only and missing values
 remain blocked in Archi. The probe uses a separate mutable bean with the same
 prefix; its getter output is checked independently of the record accessor.
 See [bean binding](bean-client-binding.md). HTTP factories are not executed.
+
+## Unique relaxed-name extension
+
+Ten added scenarios bring the gate to 76: 65 matched and 11 intentionally blocked.
+Each new scenario checks both real record and JavaBean accessor values against
+handwritten expectations, then resolves the corresponding `/2` source candidates.
+Same-spelling profile/JSON overrides are supported; competing aliases remain blocked
+because cross-alias source precedence is outside the effective-map contract.
+See [relaxed client binding](relaxed-client-binding.md).

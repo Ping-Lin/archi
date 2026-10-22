@@ -27,7 +27,9 @@ const result = (required, properties) => ({
 });
 export const adapterResultSchemas = Object.freeze({
   'spring-bean-client/1':result(['candidates','coverage'],{candidates:records,coverage}),
+  'spring-bean-client/2':result(['candidates','coverage'],{candidates:records,coverage}),
   'spring-record-client/1':result(['candidates','coverage'],{candidates:records,coverage}),
+  'spring-record-client/2':result(['candidates','coverage'],{candidates:records,coverage}),
   'spring-feign/1':result(['candidates','coverage'],{candidates:records,coverage}),
   'spring-http-factory/1':result(['candidates','coverage'],{candidates:records,coverage}),
   'spring-properties/10':result(['values','chains','scopeFact','complete'],{values:{type:'object'},chains:{type:'object'},scopeFact:{type:'string'},complete:{type:'boolean'}}),
@@ -90,7 +92,9 @@ export function validateAdapterResult(id, result) {
 // Closed, versioned built-ins. A manifest selects an adapter, never executable code.
 export const adapterContracts = Object.freeze({
   'spring-bean-client/1':Object.freeze({input:'pinned-java + explicit-String-bean-registration + reviewed-binding',output:'configured-base-url-candidates + bean-binding-evidence + diagnostics',engine:'java-parser@3.0.1 + explicit-bean-client/1'}),
+  'spring-bean-client/2':Object.freeze({input:'pinned-java + explicit-String-bean-registration + reviewed-binding',output:'configured-base-url-candidates + bean-binding-evidence + diagnostics',engine:'java-parser@3.0.1 + explicit-bean-client/2 + unique-relaxed-property/1'}),
   'spring-record-client/1':Object.freeze({input:'pinned-java + explicit-String-record-registration + reviewed-binding',output:'configured-base-url-candidates + record-binding-evidence + diagnostics',engine:'java-parser@3.0.1 + explicit-record-client/1'}),
+  'spring-record-client/2':Object.freeze({input:'pinned-java + explicit-String-record-registration + reviewed-binding',output:'configured-base-url-candidates + record-binding-evidence + diagnostics',engine:'java-parser@3.0.1 + explicit-record-client/2 + unique-relaxed-property/1'}),
   'spring-feign/1':Object.freeze({input:'pinned-java + explicit-client-registration + reviewed-defaults',output:'configured-base-url-candidates + registration-evidence + diagnostics',engine:'java-parser@3.0.1 + explicit-feign/1'}),
   'spring-http-factory/1':Object.freeze({input:'pinned-java + explicit-spring-http-imports + literal-value-parameter',output:'configured-base-url-candidates + evidence + diagnostics',engine:'java-parser@3.0.1 + bounded-http-factory/1'}),
   'spring-properties/10':Object.freeze({input:'v8-or-v9-scope + ordered-documents-and-profile-activation',output:'effective-values + document-profile-import-evidence + diagnostics',engine:'profile-activated-documents/1 + mounted-configmap-files/3 + bound-profile-imports/1 + rendered-configmap-env/1 + closed-scope-placeholders/1'}),
@@ -123,7 +127,9 @@ export const adapterContracts = Object.freeze({
 });
 export function runAdapter(id, context) {
   let result;
-  if(id==='spring-bean-client/1')result=extractRecordClients(context,{beans:true});
+  if(id==='spring-bean-client/2')result=extractRecordClients(context,{beans:true,relaxed:true});
+  else if(id==='spring-record-client/2')result=extractRecordClients(context,{relaxed:true});
+  else if(id==='spring-bean-client/1')result=extractRecordClients(context,{beans:true});
   else if(id==='spring-record-client/1')result=extractRecordClients(context);
   else if(id==='spring-feign/1')result=extractFeign(context);
   else if(['spring-properties/8','spring-properties/9','spring-properties/10'].includes(id))result=resolveProperties(context.files,context.env,context.resources,context.source,context.ledger,{

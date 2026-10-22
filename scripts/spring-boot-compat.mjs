@@ -11,7 +11,18 @@ import {resolveCandidates,readObservations} from '../src/analysis/resolve.mjs';
 
 // Handwritten expected values are independent of both evaluators.
 const base='peer.host=orders\npeer.port=7000\n';
+const relaxedBase=base+'archi.probe.bean=true\narchi.probe.record=true\n';
 const cases=[
+  {id:'relaxed-canonical',files:[['application.properties',relaxedBase+'peer.base-url=https://orders.example.invalid']],expected:['orders','7000'],relaxedExpected:'https://orders.example.invalid'},
+  {id:'relaxed-camel',files:[['application.properties',relaxedBase+'peer.baseUrl=https://orders.example.invalid']],expected:['orders','7000'],relaxedExpected:'https://orders.example.invalid'},
+  {id:'relaxed-underscore',files:[['application.properties',relaxedBase+'peer.base_url=https://orders.example.invalid']],expected:['orders','7000'],relaxedExpected:'https://orders.example.invalid'},
+  {id:'relaxed-yaml',files:[['application.yaml','archi.probe.bean: true\narchi.probe.record: true\npeer:\n  host: orders\n  port: 7000\n  baseUrl: https://orders.example.invalid']],expected:['orders','7000'],relaxedExpected:'https://orders.example.invalid'},
+  {id:'relaxed-json',files:[['application.properties',relaxedBase]],env:{SPRING_APPLICATION_JSON:'{"peer.baseUrl":"https://orders.example.invalid"}'},expected:['orders','7000'],relaxedExpected:'https://orders.example.invalid'},
+  {id:'relaxed-same-spelling-json-override',files:[['application.properties',relaxedBase+'peer.baseUrl=https://old.example.invalid']],env:{SPRING_APPLICATION_JSON:'{"peer.baseUrl":"https://orders.example.invalid"}'},expected:['orders','7000'],relaxedExpected:'https://orders.example.invalid'},
+  {id:'relaxed-same-spelling-profile',profiles:['qa'],profileBases:['application.properties'],files:[['application.properties',relaxedBase+'peer.base_url=https://old.example.invalid']],extra:[['application-qa.properties','peer.base_url=https://orders.example.invalid']],expected:['orders','7000'],relaxedExpected:'https://orders.example.invalid'},
+  {id:'relaxed-cross-alias-env-blocked',files:[['application.properties',relaxedBase+'peer.baseUrl=https://old.example.invalid']],env:{PEER_BASEURL:'https://orders.example.invalid'},expected:['orders','7000'],relaxedExpected:'https://orders.example.invalid',relaxedBlocked:true},
+  {id:'relaxed-cross-alias-json-blocked',files:[['application.properties',relaxedBase+'peer.base_url=https://old.example.invalid']],env:{SPRING_APPLICATION_JSON:'{"peer.baseUrl":"https://orders.example.invalid"}'},expected:['orders','7000'],relaxedExpected:'https://orders.example.invalid',relaxedBlocked:true},
+  {id:'relaxed-equal-aliases-blocked',files:[['application.properties',relaxedBase+'peer.base-url=https://orders.example.invalid\npeer.baseUrl=https://orders.example.invalid']],expected:['orders','7000'],relaxedExpected:'https://orders.example.invalid',relaxedBlocked:true},
   {id:'bean-canonical',files:[['application.properties',base+'archi.probe.bean=true\npeer.base-url=https://orders.example.invalid']],expected:['orders','7000'],beanExpected:'https://orders.example.invalid'},
   {id:'bean-yaml',files:[['application.yaml','archi.probe.bean: true\npeer:\n  host: orders\n  port: 7000\n  base-url: https://orders.example.invalid']],expected:['orders','7000'],beanExpected:'https://orders.example.invalid'},
   {id:'bean-env-override',files:[['application.properties',base+'archi.probe.bean=true\npeer.base-url=https://old.example.invalid']],env:{PEER_BASEURL:'https://orders.example.invalid'},expected:['orders','7000'],beanExpected:'https://orders.example.invalid'},
@@ -144,7 +155,18 @@ try {
       assert.equal(resolved.dependencies.length,scenario.beanBlocked?0:1,scenario.id+' bean dependency');
       if(!scenario.beanBlocked)assert.equal(resolved.candidates[0].value,scenario.beanExpected);
     }
-    results.push({id:scenario.id,status:scenario.unsupported||scenario.recordBlocked||scenario.beanBlocked?'unsupported-correctly-blocked':'matched',springBoot:scenario.bootFailure?'startup-failed':observed.version,expected:scenario.expected??null,diagnostics:properties.diagnostics.map(d=>d.code)});
+    if(Object.hasOwn(scenario,'relaxedExpected')){
+      for(const kind of ['record','bean']){
+        assert.equal(observed[kind==='record'?'binding.base-url':'binding.bean-base-url'],scenario.relaxedExpected,scenario.id+' Boot '+kind);
+        const sourceFiles=new Map(await Promise.all(['Peer.java','Clients.java'].map(async name=>[name,await readFile(path.join(repo,`examples/${kind}-client`,name),'utf8')])));
+        const env={id:'qa',profiles:scenario.profiles??['qa'],targets:[{id:'orders',kind:'external',url:'https://orders.example.invalid'}]};
+        const extracted=runAdapter(`spring-${kind}-client/2`,{files:sourceFiles,source:{service:'probe',files:[...sourceFiles.keys()]},env,ledger:propertyLedger,service:{source:{bindingPolicy:`explicit-${kind}-binding-reviewed`}}});
+        const resolved=resolveCandidates(extracted,properties,env,[],readObservations(null,env,propertyLedger),propertyLedger);
+        assert.equal(resolved.dependencies.length,scenario.relaxedBlocked?0:1,scenario.id+' '+kind+' relaxed dependency');
+        if(!scenario.relaxedBlocked)assert.equal(resolved.candidates[0].value,scenario.relaxedExpected);
+      }
+    }
+    results.push({id:scenario.id,status:scenario.unsupported||scenario.recordBlocked||scenario.beanBlocked||scenario.relaxedBlocked?'unsupported-correctly-blocked':'matched',springBoot:scenario.bootFailure?'startup-failed':observed.version,expected:scenario.expected??null,diagnostics:properties.diagnostics.map(d=>d.code)});
     console.log(scenario.id+': '+results.at(-1).status);
   }
   const out=path.join(repo,'artifacts/spring-boot-compat');await mkdir(out,{recursive:true});

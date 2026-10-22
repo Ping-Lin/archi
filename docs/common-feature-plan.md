@@ -66,11 +66,21 @@ registration and relaxed aliases remain unsupported. See [record binding](record
 
 ## Fourth slice: mutable ConfigurationProperties beans
 
+Status: implemented in `4c620d4`; all three CI jobs passed (run `39552432610`).
+
 `spring-bean-client/1` supports explicitly registered, public mutable beans with
 plain private String fields and trivial getter/setter pairs. Direct getters feed
 HTTP factory base URLs; custom logic and noncanonical keys remain unresolved.
 See [bean binding](bean-client-binding.md). Parser/resolver tests, pinned Helm
 composition and six independent Boot expectations form the acceptance gate.
 
-Next: assess bounded relaxed-name precedence with independent Boot expectations. Kotlin/gRPC extraction remains in
-the P1 backlog; no general Java/Kotlin dataflow completeness is claimed.
+## Fifth slice: unique relaxed member names
+
+`spring-record-client/2` and `spring-bean-client/2` accept a unique canonical,
+camelCase or underscore member spelling. Same-spelling precedence uses the existing
+property adapters; competing aliases remain unknown. Ten additional real-Boot
+scenarios check both binding forms. See [relaxed client binding](relaxed-client-binding.md).
+
+Next: retain ordered property sources to resolve cross-alias precedence against
+Boot, then resume the remaining P1 backlog. Kotlin/gRPC extraction remains planned;
+no general Java/Kotlin dataflow completeness is claimed.

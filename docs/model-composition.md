@@ -1,5 +1,8 @@
 # System composition — archi/system-v1alpha1
 
+Opt-in typed client `/2` adapters support unique relaxed member names. See
+[relaxed binding](relaxed-client-binding.md).
+
 `spring-bean-client/1` supports explicit mutable String properties beans. See
 [bean consumption](bean-client-binding.md).
 

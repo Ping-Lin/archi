@@ -125,17 +125,17 @@ test('manifest source requires explicit bean binding policy',()=>{
 let helmAvailable=true;
 try{execFileSync(process.env.HELM_BIN??'helm',['version','--short'],{stdio:'ignore'});}catch{helmAvailable=false;}
 if(process.env.CI&&!helmAvailable)throw Error('CI requires Helm for bean binding integration');
-test('bean source, properties and Helm compose from pinned inputs',{skip:!helmAvailable?'Helm unavailable; integration gate incomplete':false},async()=>{
+for(const version of [1,2])test(`bean v${version} source, properties and Helm compose from pinned inputs`,{skip:!helmAvailable?'Helm unavailable; integration gate incomplete':false},async()=>{
   const temp=await mkdtemp(path.join(os.tmpdir(),'archi-bean-'));
   try{
     const f=await createCrossRepoFixture(path.join(temp,'inputs'));
     await writeFile(path.join(f.root,'portal','Clients.java'),factory);
     await writeFile(path.join(f.root,'portal','Peer.java'),bean);
-    await writeFile(path.join(f.root,'portal','application.properties'),'peer.base-url=${downstream.url}\n');
+    await writeFile(path.join(f.root,'portal','application.properties'),(version===2?'peer.baseUrl':'peer.base-url')+'=${downstream.url}\n');
     const git=args=>execFileSync('git',['-C',path.join(f.root,'portal'),...args],{encoding:'utf8'}).trim();
     git(['add','.']);git(['-c','user.name=Fixture','-c','user.email=fixture@example.invalid','-c','commit.gpgsign=false','-c','core.hooksPath=/dev/null','commit','-qm','Synthetic bean clients']);
     const revision=git(['rev-parse','HEAD']);f.manifest.repositories.find(r=>r.id==='portal').revision=revision;
-    f.manifest.services.find(s=>s.id==='portal').source={adapter:'spring-bean-client/1',files:[{repository:'portal',path:'Clients.java'},{repository:'portal',path:'Peer.java'}],bindingPolicy:policy};
+    f.manifest.services.find(s=>s.id==='portal').source={adapter:`spring-bean-client/${version}`,files:[{repository:'portal',path:'Clients.java'},{repository:'portal',path:'Peer.java'}],bindingPolicy:policy};
     for(const env of f.manifest.environments){const instance=env.instances.find(i=>i.service==='portal');instance.propertyFiles=[{repository:'portal',path:'application.properties'}];instance.configuration={adapter:'spring-properties/3',environmentBindings:[]};}
     await writeFile(f.path,JSON.stringify(f.manifest));
     const first=await analyzeSystem(f.root,'system.json');
@@ -144,7 +144,7 @@ test('bean source, properties and Helm compose from pinned inputs',{skip:!helmAv
     assert.deepEqual(first.snapshots.map(s=>s.contentHash),again.snapshots.map(s=>s.contentHash));
     const qa=first.snapshots.find(s=>s.environment==='qa');
     const edge=qa.dependencies.find(d=>d.source==='portal'&&d.target==='orders');
-    assert.ok(edge,JSON.stringify(qa.candidates.filter(c=>c.source==='portal')));assert.equal(edge.sourceAdapter,'spring-bean-client/1');
+    assert.ok(edge,JSON.stringify(qa.candidates.filter(c=>c.source==='portal')));assert.equal(edge.sourceAdapter,`spring-bean-client/${version}`);
     const fact=qa.facts.find(f=>f.predicate==='configuration.binding');
     assert.equal(qa.evidence.filter(e=>fact.evidenceIds.includes(e.id)&&e.provenance?.revision===revision).length,2);
   }finally{await rm(temp,{recursive:true,force:true});}

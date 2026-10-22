@@ -14,8 +14,8 @@ const text=node=>tokens(node).map(t=>t.image).join(' ');
 const annotations=(node,modifier)=>(node?.children[modifier]??[]).flatMap(m=>nodes(m,'annotation')).map(text);
 const canonical=member=>member.replace(/[A-Z]/g,c=>'-'+c.toLowerCase());
 
-export function extractRecordClients({files,source,env,ledger,service},{beans=false}={}){
-  const adapter=beans?'spring-bean-client/1':'spring-record-client/1';
+export function extractRecordClients({files,source,env,ledger,service},{beans=false,relaxed=false}={}){
+  const adapter=`spring-${beans?'bean':'record'}-client/${relaxed?2:1}`;
   const policy=beans?'explicit-bean-binding-reviewed':'explicit-record-binding-reviewed';
   const records=[],registrations=[],factories=[],diagnostics=[];
   const fail=(file,message)=>diagnostics.push({code:beans?'UNSUPPORTED_BEAN_BINDING':'UNSUPPORTED_RECORD_BINDING',file,message:beans?message.replace(/record/gi,'JavaBean'):message});

@@ -1,5 +1,8 @@
 # Explicit mutable ConfigurationProperties consumption
 
+For opt-in unique camelCase/underscore binding, see the
+[`/2` adapter extension](relaxed-client-binding.md). The `/1` boundary below remains unchanged.
+
 `spring-bean-client/1` links an explicitly registered mutable JavaBean to a direct
 String getter consumed by a RestClient/WebClient factory. It shares registration
 and evidence handling with the record adapter; existing record behavior is retained.

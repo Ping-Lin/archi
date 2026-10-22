@@ -1,3 +1,4 @@
+import {selectRelaxedProperty} from './relaxed-binding.mjs';
 import { hash, identify, VERSION, assertSnapshot } from "./contract.mjs";
 import { resourceKey } from "./helm.mjs";
 import { endpointKeys, resolveEndpointBinding, resolveGrpcEndpoint } from './endpoint-binding.mjs';
@@ -119,6 +120,7 @@ export function resolveCandidates(
       ...(targetFact ? [targetFact] : []),
       ...(candidate.endpointBinding ? endpointKeys(candidate.endpointBinding).flatMap(k=>properties.chains[k]??[]) : properties.chains[candidate.key] ?? []),
     ];
+    let bindingKey=candidate.key;
     const reasons = [...candidate.unsupported];
     if (candidate.endpointMeaning === 'configured-base-url')
       reasons.push('Configured HTTP client base URL only; request URI overrides, later mutation, redirects, proxies and actual calls are not analyzed');
@@ -136,6 +138,15 @@ export function resolveCandidates(
         facts.push(...aliases.flatMap(k=>properties.chains[k]??[]));
         reasons.push('Noncanonical or competing relaxed property aliases require a separate binding adapter');
       }
+    }
+    if(['spring-record-client/2','spring-bean-client/2'].includes(candidate.sourceAdapter)){
+      const binding=selectRelaxedProperty(candidate,properties.values);
+      bindingKey=binding.selectedKey;
+      facts.push(...binding.consideredKeys.flatMap(k=>properties.chains[k]??[]));
+      if(binding.unsupported.length){eligibility='unknown';reasons.push(...binding.unsupported);}
+      reasons.push('Reviewed String binding accepts one canonical, camelCase or underscore spelling per member; competing aliases remain unsupported');
+      const evidenceIds=[...new Set(ledger.facts.filter(f=>facts.includes(f.id)).flatMap(f=>f.evidenceIds))];
+      facts.push(ledger.fact('configuration.property-binding',candidate.id,{adapter:candidate.sourceAdapter,key:candidate.key,...binding},evidenceIds));
     }
     if(candidate.sourceAdapter==='spring-feign/1'&&Object.keys(properties.values).some(k=>/^(spring\.cloud\.openfeign\.|feign\.)/.test(k))){
       eligibility='unknown';
@@ -178,7 +189,7 @@ export function resolveCandidates(
       reasons.push(
         candidate.extraction ? 'Operator accepted the AI extraction; supported conditions are satisfied. This is a declared review, not parser verification or execution proof.' : candidate.sourceAdapter==='spring-feign/1' ? 'Explicit Feign interface registration matches the selected source scope; configuration activation is reviewed, not runtime-proven' : "Explicit bean registration and supported conditions are satisfied; execution is not proven",
       );
-    const value = candidate.endpointBinding ? Object.fromEntries(endpointKeys(candidate.endpointBinding).map(k=>[k,properties.values[k]??null])) : properties.values[candidate.key] ?? null;
+    const value = candidate.endpointBinding ? Object.fromEntries(endpointKeys(candidate.endpointBinding).map(k=>[k,properties.values[k]??null])) : bindingKey==null?null:properties.values[bindingKey] ?? null;
     let url = properties.complete ? (candidate.endpointAdapter==='grpc-endpoint/1' ? resolveGrpcEndpoint(candidate.endpointBinding,properties.values) : candidate.endpointBinding ? resolveEndpointBinding(candidate.endpointBinding,candidate.extraction.protocol,properties.values) : endpoint(value)) : null;
     if (candidate.endpointMeaning === 'configured-base-url' && (!url || !['http:', 'https:'].includes(new URL(url).protocol))) {
       url = null;
@@ -282,7 +293,7 @@ export function resolveCandidates(
       [...new Set(facts)],
       outcome,
       reasons,
-      ['spring-http-factory/1','spring-feign/1','spring-record-client/1','spring-bean-client/1'].includes(candidate.sourceAdapter)
+      ['spring-http-factory/1','spring-feign/1','spring-record-client/1','spring-bean-client/1','spring-record-client/2','spring-bean-client/2'].includes(candidate.sourceAdapter)
         ? candidate.sourceAdapter + (targetResolver ? ' + deployment-endpoint/1' : '')
         : targetResolver ? (candidate.endpointAdapter==='grpc-endpoint/1'?'grpc-endpoint/1 + deployment-endpoint/1':candidate.endpointBinding ? 'endpoint-binding/1 + deployment-endpoint/1' : "deployment-endpoint/1") : undefined,
     );

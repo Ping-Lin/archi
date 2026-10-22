@@ -1,5 +1,8 @@
 # Explicit ConfigurationProperties record consumption
 
+For opt-in unique camelCase/underscore binding, see the
+[`/2` adapter extension](relaxed-client-binding.md). The `/1` boundary below remains unchanged.
+
 `spring-record-client/1` links an explicitly registered Java properties record to
 a direct accessor consumed by a RestClient/WebClient factory. It is an opt-in
 source adapter; existing source and property adapters retain their semantics.
